@@ -1,4 +1,4 @@
-import { BusinessLead, SearchFilterCriteria, Campaign, OutreachMessage, OutreachAnalytics, WebhookSubscription, OutreachEvent } from '../types';
+import { BusinessLead, SearchFilterCriteria, Campaign, OutreachMessage, OutreachAnalytics, WebhookSubscription, OutreachEvent, JobListing, JobSearchCriteria, GlobalCity, HiringCompany } from '../types';
 
 const BASE = '';
 
@@ -334,4 +334,28 @@ export const api = {
       totalWorkflows: number;
       totalSearches: number;
     }>('/api/local-db/status'),
+
+  searchJobs: (criteria: JobSearchCriteria) =>
+    request<{ jobs: JobListing[]; total: number; source: string }>('/api/jobs/search', {
+      method: 'POST',
+      body: JSON.stringify(criteria),
+    }),
+
+  getJobCities: (region?: string) => {
+    const qs = region && region !== 'all' ? `?region=${encodeURIComponent(region)}` : '';
+    return request<{ cities: GlobalCity[] }>(`/api/jobs/cities${qs}`);
+  },
+
+  getJobCompanies: () =>
+    request<{ companies: HiringCompany[] }>('/api/jobs/companies'),
+
+  getJobStats: () =>
+    request<{
+      totalJobs: number;
+      remoteJobs: number;
+      companies: number;
+      countries: number;
+      topSkills: string[];
+      avgSalary: Record<string, number>;
+    }>('/api/jobs/stats'),
 };

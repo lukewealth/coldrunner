@@ -275,6 +275,53 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
     }
   });
 
+  // ==================== JOB SEARCH ====================
+  app.post('/api/jobs/search', async (req, res) => {
+    const {
+      query = 'software engineer',
+      location = '',
+      country = '',
+      jobType = 'all',
+      experienceLevel = 'all',
+      contractType = 'all',
+      salaryMin = 0,
+      technologies = [],
+      remoteOnly = false,
+      maxResults = 20,
+    } = req.body || {};
+
+    try {
+      const jobs = await fetchJobsFromAPIs({ query, location, country, jobType, experienceLevel, contractType, salaryMin, technologies, remoteOnly, maxResults });
+      res.json({ jobs, total: jobs.length, source: 'aggregated' });
+    } catch (err: any) {
+      const fallbackJobs = generateSimulatedJobs({ query, location, country, jobType, experienceLevel, contractType, salaryMin, technologies, remoteOnly, maxResults });
+      res.json({ jobs: fallbackJobs, total: fallbackJobs.length, source: 'simulated' });
+    }
+  });
+
+  app.get('/api/jobs/cities', (req, res) => {
+    const { region } = req.query;
+    const cities = region && region !== 'all'
+      ? GLOBAL_CITIES_DATA.filter((c: any) => c.region === region)
+      : GLOBAL_CITIES_DATA;
+    res.json({ cities });
+  });
+
+  app.get('/api/jobs/companies', (req, res) => {
+    res.json({ companies: TOP_HIRING_COMPANIES_DATA });
+  });
+
+  app.get('/api/jobs/stats', (req, res) => {
+    res.json({
+      totalJobs: 12450,
+      remoteJobs: 4820,
+      companies: 380,
+      countries: 34,
+      topSkills: ['React', 'TypeScript', 'Python', 'Go', 'Kubernetes', 'AWS', 'Node.js', 'Docker'],
+      avgSalary: { usd: 145000, cad: 130000, gbp: 85000, eur: 75000, aud: 140000, jpy: 9500000 },
+    });
+  });
+
   // ==================== MCP ENDPOINTS ====================
   app.post('/api/mcp/tools/:toolName', async (req, res) => {
     const { toolName } = req.params;
@@ -964,6 +1011,331 @@ Return JSON array with: id, name, category, country, province, city, address, la
   });
 
   return JSON.parse(response.text?.trim() || '[]');
+}
+
+const GLOBAL_CITIES_DATA = [
+  { name: 'Sydney', country: 'Australia', region: 'Oceania', lat: -33.8688, lng: 151.2093 },
+  { name: 'Melbourne', country: 'Australia', region: 'Oceania', lat: -37.8136, lng: 144.9631 },
+  { name: 'Brisbane', country: 'Australia', region: 'Oceania', lat: -27.4698, lng: 153.0251 },
+  { name: 'Tokyo', country: 'Japan', region: 'Asia', lat: 35.6762, lng: 139.6503 },
+  { name: 'Osaka', country: 'Japan', region: 'Asia', lat: 34.6937, lng: 135.5023 },
+  { name: 'Hong Kong', country: 'China', region: 'Asia', lat: 22.3193, lng: 114.1694 },
+  { name: 'Shanghai', country: 'China', region: 'Asia', lat: 31.2304, lng: 121.4737 },
+  { name: 'Beijing', country: 'China', region: 'Asia', lat: 39.9042, lng: 116.4074 },
+  { name: 'Shenzhen', country: 'China', region: 'Asia', lat: 22.5431, lng: 114.0579 },
+  { name: 'Toronto', country: 'Canada', region: 'North America', lat: 43.6532, lng: -79.3832 },
+  { name: 'Vancouver', country: 'Canada', region: 'North America', lat: 49.2827, lng: -123.1207 },
+  { name: 'Montreal', country: 'Canada', region: 'North America', lat: 45.5017, lng: -73.5673 },
+  { name: 'Stockholm', country: 'Sweden', region: 'Europe', lat: 59.3293, lng: 18.0686 },
+  { name: 'Gothenburg', country: 'Sweden', region: 'Europe', lat: 57.7089, lng: 11.9746 },
+  { name: 'Mexico City', country: 'Mexico', region: 'North America', lat: 19.4326, lng: -99.1332 },
+  { name: 'Guadalajara', country: 'Mexico', region: 'North America', lat: 20.6597, lng: -103.3496 },
+  { name: 'San Francisco', country: 'United States', region: 'North America', lat: 37.7749, lng: -122.4194 },
+  { name: 'New York', country: 'United States', region: 'North America', lat: 40.7128, lng: -74.0060 },
+  { name: 'Seattle', country: 'United States', region: 'North America', lat: 47.6062, lng: -122.3321 },
+  { name: 'Austin', country: 'United States', region: 'North America', lat: 30.2672, lng: -97.7431 },
+  { name: 'London', country: 'United Kingdom', region: 'Europe', lat: 51.5074, lng: -0.1278 },
+  { name: 'Berlin', country: 'Germany', region: 'Europe', lat: 52.5200, lng: 13.4050 },
+  { name: 'Singapore', country: 'Singapore', region: 'Asia', lat: 1.3521, lng: 103.8198 },
+  { name: 'Bangalore', country: 'India', region: 'Asia', lat: 12.9716, lng: 77.5946 },
+  { name: 'Dubai', country: 'UAE', region: 'Middle East', lat: 25.2048, lng: 55.2708 },
+  { name: 'São Paulo', country: 'Brazil', region: 'South America', lat: -23.5505, lng: -46.6333 },
+];
+
+const TOP_HIRING_COMPANIES_DATA = [
+  { name: 'Google', industry: 'Technology', openPositions: 4200, remoteFriendly: true, techStack: ['Go', 'Python', 'Java', 'Kubernetes'] },
+  { name: 'Microsoft', industry: 'Technology', openPositions: 5100, remoteFriendly: true, techStack: ['C#', 'TypeScript', 'Azure', 'React'] },
+  { name: 'Amazon', industry: 'Technology', openPositions: 8300, remoteFriendly: true, techStack: ['Java', 'Python', 'AWS', 'React'] },
+  { name: 'Meta', industry: 'Technology', openPositions: 2800, remoteFriendly: true, techStack: ['React', 'Python', 'PyTorch', 'GraphQL'] },
+  { name: 'Stripe', industry: 'Fintech', openPositions: 1200, remoteFriendly: true, techStack: ['Ruby', 'Go', 'React', 'Scala'] },
+  { name: 'Shopify', industry: 'E-commerce', openPositions: 800, remoteFriendly: true, techStack: ['Ruby', 'React', 'GraphQL', 'Go'] },
+  { name: 'Spotify', industry: 'Music/Tech', openPositions: 600, remoteFriendly: true, techStack: ['Java', 'Python', 'React', 'GCP'] },
+  { name: 'Atlassian', industry: 'Software', openPositions: 900, remoteFriendly: true, techStack: ['Java', 'React', 'TypeScript', 'AWS'] },
+  { name: 'Canva', industry: 'Design/Tech', openPositions: 500, remoteFriendly: true, techStack: ['Java', 'React', 'TypeScript', 'AWS'] },
+  { name: 'ByteDance', industry: 'Technology', openPositions: 3500, remoteFriendly: false, techStack: ['Go', 'Python', 'React', 'Kubernetes'] },
+  { name: 'Tencent', industry: 'Technology', openPositions: 2800, remoteFriendly: false, techStack: ['C++', 'Go', 'Python', 'React'] },
+  { name: 'Mercado Libre', industry: 'E-commerce', openPositions: 1500, remoteFriendly: true, techStack: ['Java', 'Go', 'React', 'Kubernetes'] },
+  { name: 'Klarna', industry: 'Fintech', openPositions: 700, remoteFriendly: true, techStack: ['Java', 'React', 'TypeScript', 'AWS'] },
+  { name: 'Revolut', industry: 'Fintech', openPositions: 900, remoteFriendly: true, techStack: ['Java', 'Kotlin', 'React', 'AWS'] },
+  { name: 'Grab', industry: 'Super App', openPositions: 600, remoteFriendly: true, techStack: ['Go', 'Python', 'React', 'Kubernetes'] },
+  { name: 'Nubank', industry: 'Fintech', openPositions: 1100, remoteFriendly: true, techStack: ['Clojure', 'Kotlin', 'React', 'AWS'] },
+  { name: 'Rakuten', industry: 'E-commerce/Tech', openPositions: 800, remoteFriendly: false, techStack: ['Java', 'Ruby', 'React', 'Kubernetes'] },
+  { name: 'Lalamove', industry: 'Logistics/Tech', openPositions: 200, remoteFriendly: true, techStack: ['Go', 'React', 'Python', 'AWS'] },
+  { name: 'Rappi', industry: 'Delivery/Tech', openPositions: 400, remoteFriendly: true, techStack: ['Go', 'Python', 'React', 'Kubernetes'] },
+  { name: 'Apple', industry: 'Technology', openPositions: 3100, remoteFriendly: false, techStack: ['Swift', 'Objective-C', 'Python', 'CoreML'] },
+];
+
+async function fetchJobsFromAPIs(criteria: any): Promise<any[]> {
+  const jobs: any[] = [];
+  const query = encodeURIComponent(criteria.query || 'software engineer');
+  const location = encodeURIComponent(criteria.location || '');
+
+  try {
+    const remotiveRes = await fetch(`https://remotive.com/api/remote-jobs?search=${query}&limit=${Math.min(criteria.maxResults, 20)}`);
+    if (remotiveRes.ok) {
+      const remotiveData = await remotiveRes.json();
+      if (remotiveData.jobs) {
+        for (const job of remotiveData.jobs.slice(0, criteria.maxResults)) {
+          jobs.push({
+            id: `remotive-${job.id}`,
+            title: job.title,
+            company: job.company_name,
+            companyLogo: job.company_logo,
+            companyWebsite: job.company_logo ? job.url : undefined,
+            location: job.candidate_required_location || 'Remote',
+            city: extractCity(job.candidate_required_location || ''),
+            country: extractCountry(job.candidate_required_location || ''),
+            jobType: 'remote',
+            experienceLevel: inferExperienceLevel(job.title),
+            contractType: job.job_type || 'full-time',
+            salary: job.salary || undefined,
+            description: stripHtml(job.description || ''),
+            requirements: extractList(job.description, 'require'),
+            technologies: extractTechKeywords((job.description || '') + ' ' + (job.title || '')),
+            benefits: extractList(job.description, 'benefit'),
+            postedAt: job.publication_date ? job.publication_date.split('T')[0] : new Date().toISOString().split('T')[0],
+            applicationUrl: job.url,
+            source: 'Remotive',
+            isFeatured: false,
+            applicantCount: Math.floor(Math.random() * 200) + 10,
+          });
+        }
+      }
+    }
+  } catch {}
+
+  try {
+    const arbeitnowRes = await fetch(`https://www.arbeitnow.com/api/job-board-api`);
+    if (arbeitnowRes.ok) {
+      const arbeitnowData = await arbeitnowRes.json();
+      if (arbeitnowData.data) {
+        const filtered = arbeitnowData.data
+          .filter((j: any) => {
+            const text = `${j.title} ${j.description}`.toLowerCase();
+            const q = (criteria.query || '').toLowerCase();
+            return q ? text.includes(q) : true;
+          })
+          .slice(0, Math.min(criteria.maxResults, 15));
+
+        for (const job of filtered) {
+          if (jobs.length >= criteria.maxResults) break;
+          jobs.push({
+            id: `arbeitnow-${job.slug}`,
+            title: job.title,
+            company: job.company_name,
+            companyLogo: undefined,
+            location: job.location || 'Europe',
+            city: extractCity(job.location || ''),
+            country: extractCountry(job.location || ''),
+            jobType: job.remote ? 'remote' : 'onsite',
+            experienceLevel: inferExperienceLevel(job.title),
+            contractType: mapContractType(job.tags),
+            salary: undefined,
+            description: stripHtml(job.description || ''),
+            requirements: extractList(job.description, 'require'),
+            technologies: extractTechKeywords((job.description || '') + ' ' + (job.title || '')),
+            benefits: extractList(job.description, 'benefit'),
+            postedAt: job.created_at ? new Date(job.created_at * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            applicationUrl: job.url,
+            source: 'Arbeitnow',
+            isFeatured: false,
+            applicantCount: Math.floor(Math.random() * 150) + 5,
+          });
+        }
+      }
+    }
+  } catch {}
+
+  if (jobs.length === 0) {
+    throw new Error('No jobs fetched from external APIs');
+  }
+
+  return applyFilters(jobs, criteria);
+}
+
+function applyFilters(jobs: any[], criteria: any): any[] {
+  let filtered = jobs;
+  if (criteria.jobType && criteria.jobType !== 'all') {
+    filtered = filtered.filter((j) => j.jobType === criteria.jobType);
+  }
+  if (criteria.experienceLevel && criteria.experienceLevel !== 'all') {
+    filtered = filtered.filter((j) => j.experienceLevel === criteria.experienceLevel);
+  }
+  if (criteria.contractType && criteria.contractType !== 'all') {
+    filtered = filtered.filter((j) => j.contractType === criteria.contractType);
+  }
+  if (criteria.remoteOnly) {
+    filtered = filtered.filter((j) => j.jobType === 'remote');
+  }
+  if (criteria.technologies && criteria.technologies.length > 0) {
+    filtered = filtered.filter((j) =>
+      criteria.technologies.some((t: string) =>
+        j.technologies.some((jt: string) => jt.toLowerCase() === t.toLowerCase())
+      )
+    );
+  }
+  return filtered.slice(0, criteria.maxResults || 20);
+}
+
+function extractCity(location: string): string {
+  const parts = location.split(',').map((s) => s.trim());
+  return parts[0] || 'Remote';
+}
+
+function extractCountry(location: string): string {
+  const parts = location.split(',').map((s) => s.trim());
+  return parts[parts.length - 1] || 'Global';
+}
+
+function inferExperienceLevel(title: string): string {
+  const lower = title.toLowerCase();
+  if (lower.includes('principal') || lower.includes('staff') || lower.includes('vp')) return 'principal';
+  if (lower.includes('lead') || lower.includes('architect') || lower.includes('manager')) return 'lead';
+  if (lower.includes('senior') || lower.includes('sr.')) return 'senior';
+  if (lower.includes('junior') || lower.includes('jr.') || lower.includes('entry') || lower.includes('intern')) return 'entry';
+  return 'mid';
+}
+
+function mapContractType(tags: string[]): string {
+  if (!tags) return 'full-time';
+  const lower = tags.map((t) => t.toLowerCase());
+  if (lower.includes('contract') || lower.includes('freelance')) return 'contract';
+  if (lower.includes('part-time') || lower.includes('part time')) return 'part-time';
+  if (lower.includes('internship')) return 'internship';
+  return 'full-time';
+}
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500);
+}
+
+function extractList(html: string, keyword: string): string[] {
+  const text = stripHtml(html || '').toLowerCase();
+  const idx = text.indexOf(keyword);
+  if (idx === -1) return [];
+  const snippet = text.slice(idx, idx + 300);
+  return snippet.split(/[•\-\n]/).map((s) => s.trim()).filter(Boolean).slice(0, 5);
+}
+
+function extractTechKeywords(text: string): string[] {
+  const allTech = ['React', 'TypeScript', 'JavaScript', 'Python', 'Java', 'Go', 'Rust', 'C++', 'Swift', 'Kotlin', 'Node.js', 'Next.js', 'Vue.js', 'Angular', 'AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Terraform', 'PostgreSQL', 'MongoDB', 'Redis', 'Elasticsearch', 'Kafka', 'GraphQL', 'TensorFlow', 'PyTorch', 'Git', 'Linux', 'REST API', 'Microservices', 'Ruby', 'Scala', 'PHP', 'C#', 'Django', 'Flask', 'Spring Boot', 'CI/CD', 'Spark', 'Airflow', 'LangChain', 'OpenAI API', 'Hugging Face', 'RAG', 'Vector DBs', 'LLMs', 'n8n', 'Agent Orchestration', 'Event-Driven Architecture', 'Domain-Driven Design', 'CQRS', 'gRPC'];
+  const lower = text.toLowerCase();
+  return allTech.filter((t) => lower.includes(t.toLowerCase())).slice(0, 8);
+}
+
+function generateSimulatedJobs(criteria: any): any[] {
+  const count = Math.min(criteria.maxResults || 12, 20);
+  const companies = [
+    { name: 'Google', site: 'careers.google.com' },
+    { name: 'Microsoft', site: 'careers.microsoft.com' },
+    { name: 'Amazon', site: 'amazon.jobs' },
+    { name: 'Meta', site: 'metacareers.com' },
+    { name: 'Stripe', site: 'stripe.com/jobs' },
+    { name: 'Shopify', site: 'shopify.com/careers' },
+    { name: 'Spotify', site: 'spotifyjobs.com' },
+    { name: 'Atlassian', site: 'atlassian.com/careers' },
+    { name: 'Canva', site: 'canva.com/careers' },
+    { name: 'ByteDance', site: 'bytedance.com/careers' },
+    { name: 'Klarna', site: 'klarna.com/careers' },
+    { name: 'Revolut', site: 'revolut.com/careers' },
+    { name: 'Mercado Libre', site: 'mercadolibre.com/empleos' },
+    { name: 'Grab', site: 'grab.careers' },
+    { name: 'Nubank', site: 'nubank.com.br/careers' },
+    { name: 'Rakuten', site: 'rakuten.careers' },
+    { name: 'Apple', site: 'jobs.apple.com' },
+    { name: 'Netflix', site: 'jobs.netflix.com' },
+    { name: 'Airbnb', site: 'airbnb.com/careers' },
+    { name: 'Uber', site: 'uber.com/careers' },
+  ];
+
+  const cities = [
+    { city: 'San Francisco', country: 'United States', lat: 37.7749, lng: -122.4194 },
+    { city: 'New York', country: 'United States', lat: 40.7128, lng: -74.0060 },
+    { city: 'Seattle', country: 'United States', lat: 47.6062, lng: -122.3321 },
+    { city: 'Toronto', country: 'Canada', lat: 43.6532, lng: -79.3832 },
+    { city: 'Vancouver', country: 'Canada', lat: 49.2827, lng: -123.1207 },
+    { city: 'London', country: 'United Kingdom', lat: 51.5074, lng: -0.1278 },
+    { city: 'Berlin', country: 'Germany', lat: 52.5200, lng: 13.4050 },
+    { city: 'Stockholm', country: 'Sweden', lat: 59.3293, lng: 18.0686 },
+    { city: 'Tokyo', country: 'Japan', lat: 35.6762, lng: 139.6503 },
+    { city: 'Sydney', country: 'Australia', lat: -33.8688, lng: 151.2093 },
+    { city: 'Singapore', country: 'Singapore', lat: 1.3521, lng: 103.8198 },
+    { city: 'Hong Kong', country: 'China', lat: 22.3193, lng: 114.1694 },
+    { city: 'Mexico City', country: 'Mexico', lat: 19.4326, lng: -99.1332 },
+    { city: 'São Paulo', country: 'Brazil', lat: -23.5505, lng: -46.6333 },
+    { city: 'Bangalore', country: 'India', lat: 12.9716, lng: 77.5946 },
+    { city: 'Dubai', country: 'UAE', lat: 25.2048, lng: 55.2708 },
+  ];
+
+  const titles = [
+    'Software Engineer', 'Senior Software Engineer', 'Staff Engineer',
+    'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
+    'DevOps Engineer', 'Site Reliability Engineer', 'Data Engineer',
+    'Machine Learning Engineer', 'Platform Engineer', 'Cloud Architect',
+    'Security Engineer', 'QA Engineer', 'React Developer',
+    'Python Developer', 'iOS Developer', 'Android Developer',
+    'Engineering Manager', 'Solutions Architect',
+    'Software Architect', 'Enterprise Architect',
+    'AI Automation Engineer', 'AI/ML Engineer', 'MLOps Engineer',
+    'Prompt Engineer', 'AI Platform Engineer',
+  ];
+
+  const jobTypes = ['remote', 'hybrid', 'onsite'] as const;
+  const expLevels = ['entry', 'mid', 'senior', 'lead'] as const;
+  const techSets = [
+    ['React', 'TypeScript', 'Node.js', 'PostgreSQL'],
+    ['Python', 'Django', 'AWS', 'Redis'],
+    ['Java', 'Spring Boot', 'Kubernetes', 'Kafka'],
+    ['Go', 'gRPC', 'Docker', 'Terraform'],
+    ['React', 'GraphQL', 'MongoDB', 'AWS'],
+    ['Swift', 'iOS', 'CoreData', 'Combine'],
+    ['Kotlin', 'Android', 'Jetpack Compose', 'Firebase'],
+    ['Python', 'TensorFlow', 'PyTorch', 'Spark'],
+    ['Rust', 'WebAssembly', 'Cloudflare Workers'],
+    ['Vue.js', 'Nuxt', 'TypeScript', 'PostgreSQL'],
+    ['Python', 'LangChain', 'OpenAI API', 'Kubernetes', 'RAG'],
+    ['Python', 'Hugging Face', 'Vector DBs', 'AWS', 'Agent Orchestration'],
+    ['Java', 'TypeScript', 'AWS', 'Kubernetes', 'Domain-Driven Design', 'Event-Driven Architecture'],
+    ['C#', 'Azure', '.NET', 'Kubernetes', 'CQRS', 'Microservices'],
+  ];
+
+  return Array.from({ length: count }, (_, i) => {
+    const company = companies[i % companies.length];
+    const loc = cities[i % cities.length];
+    const jt = jobTypes[i % 3];
+    const exp = expLevels[i % 4];
+    const tech = techSets[i % techSets.length];
+    const baseSalary = exp === 'entry' ? 80000 : exp === 'mid' ? 120000 : exp === 'senior' ? 170000 : 220000;
+    const variance = Math.floor(Math.random() * 40000);
+
+    return {
+      id: `sim-${Date.now()}-${i}`,
+      title: titles[i % titles.length],
+      company: company.name,
+      companyWebsite: company.site,
+      location: jt === 'remote' ? 'Remote - Global' : `${loc.city}, ${loc.country}${jt === 'hybrid' ? ' (Hybrid)' : ''}`,
+      city: loc.city,
+      country: loc.country,
+      lat: loc.lat + (Math.random() - 0.5) * 0.02,
+      lng: loc.lng + (Math.random() - 0.5) * 0.02,
+      jobType: jt,
+      experienceLevel: exp,
+      contractType: 'full-time',
+      salary: `$${(baseSalary + variance).toLocaleString()} - $${(baseSalary + variance + 50000).toLocaleString()}`,
+      salaryMin: baseSalary + variance,
+      salaryMax: baseSalary + variance + 50000,
+      currency: 'USD',
+      description: `Join ${company.name} as a ${titles[i % titles.length]}. Work on cutting-edge technology that impacts millions of users daily. You will be part of a world-class engineering team building the next generation of our platform.`,
+      requirements: [`${exp === 'entry' ? '1' : exp === 'mid' ? '3' : exp === 'senior' ? '5' : '8'}+ years relevant experience`, `Strong proficiency in ${tech.slice(0, 2).join(' and ')}`, 'Excellent problem-solving skills', 'BS/MS in Computer Science or equivalent'],
+      technologies: tech,
+      benefits: ['Competitive salary & equity', 'Health & dental insurance', 'Remote work flexibility', 'Learning & development budget', 'Generous PTO'],
+      postedAt: new Date(Date.now() - Math.floor(Math.random() * 14) * 86400000).toISOString().split('T')[0],
+      applicationUrl: `https://${company.site}`,
+      source: 'Simulated',
+      isFeatured: i < 4,
+      applicantCount: Math.floor(50 + Math.random() * 400),
+    };
+  });
 }
 
 function generateSimulatedLeads(criteria: SearchCriteria): BusinessLead[] {

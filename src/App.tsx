@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { Navbar } from './components/Navbar';
+import { TopNav } from './components/TopNav';
+import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
 import { SearchWizardView } from './components/SearchWizardView';
 import { BusinessExplorerView } from './components/BusinessExplorerView';
@@ -16,6 +17,10 @@ import { TerminalLogsOverlay } from './components/TerminalLogsOverlay';
 import { ApprovalQueueView } from './components/ApprovalQueueView';
 import { CampaignTrackerView } from './components/CampaignTrackerView';
 import { NotificationsPanel } from './components/NotificationsPanel';
+import { JobSearchView } from './components/JobSearchView';
+import { JobMapView } from './components/JobMapView';
+import { LoginModal } from './components/LoginModal';
+import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './components/ui/Toast';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PageTransition } from './components/ui/PageTransition';
@@ -30,7 +35,7 @@ function AppContent() {
   const [leads, setLeads] = useState<BusinessLead[]>(INITIAL_LEADS);
   const [agents, setAgents] = useState<AgentStatusItem[]>(INITIAL_AGENTS);
   const [terminalLogs, setTerminalLogs] = useState<TerminalLog[]>(INITIAL_TERMINAL_LOGS);
-  const [isTerminalOpen, setIsTerminalOpen] = useState<boolean>(true);
+  const [isTerminalOpen, setIsTerminalOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedLead, setSelectedLead] = useState<BusinessLead | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState<boolean>(false);
@@ -38,6 +43,7 @@ function AppContent() {
   const [apiHealth, setApiHealth] = useState<'ok' | 'degraded' | 'offline'>('ok');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { addToast } = useToast();
 
   const { isConnected: sseConnected, on: onSSE } = useSSE();
@@ -280,36 +286,54 @@ function AppContent() {
         return <ApprovalQueueView leads={leads} />;
       case 'settings':
         return <SettingsView />;
+      case 'jobs':
+        return <JobSearchView onOpenMap={() => setActiveTab('job-map')} />;
+      case 'job-map':
+        return <JobMapView onBack={() => setActiveTab('jobs')} />;
       default:
         return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-emerald-500 selection:text-white pb-20">
-      <Navbar
+    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-emerald-500 selection:text-white overflow-hidden">
+      <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
         totalLeadsCount={leads.length}
         hotLeadsCount={hotLeadsCount}
         isAgentRunning={isAgentRunning}
-        onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
         terminalLogsCount={terminalLogs.length}
-        apiHealth={apiHealth}
-        notificationCount={unreadNotifications}
-        onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
-        sseConnected={sseConnected}
+        onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        <ErrorBoundary>
-          <AnimatePresence mode="wait">
-            <PageTransition tabKey={activeTab}>
-              {renderActiveView()}
-            </PageTransition>
-          </AnimatePresence>
-        </ErrorBoundary>
-      </main>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <TopNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isAgentRunning={isAgentRunning}
+          apiHealth={apiHealth}
+          notificationCount={unreadNotifications}
+          onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+          sseConnected={sseConnected}
+        />
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <ErrorBoundary>
+              <AnimatePresence mode="wait">
+                <PageTransition tabKey={activeTab}>
+                  {renderActiveView()}
+                </PageTransition>
+              </AnimatePresence>
+            </ErrorBoundary>
+          </div>
+        </main>
+      </div>
 
       <TerminalLogsOverlay
         logs={terminalLogs}
@@ -326,6 +350,8 @@ function AppContent() {
         onClose={() => setIsNotificationsOpen(false)}
       />
 
+      <LoginModal />
+
       {selectedLead && (
         <BusinessDetailModal
           lead={selectedLead}
@@ -340,9 +366,11 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <AppContent />
-      </ToastProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
