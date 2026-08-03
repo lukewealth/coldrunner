@@ -1,0 +1,6 @@
+{
+  "name": "ColdRunners Business Finder",
+  "description": "Autonomous AI-powered business intelligence and lead discovery platform for sales agencies and outbound teams.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,55 @@
+# ColdRunners
+
+Enterprise AI Business Intelligence Platform — autonomous business lead discovery, analysis, scoring, and export.
+
+## Docs
+
+- [Architecture](docs/architecture.md)
+- [Backend](docs/backend.md)
+- [Frontend](docs/frontend.md)
+- [Agent System](docs/agents.md)
+- [MCP Integration](docs/mcp.md)
+- [Local AI Models](docs/localmodels.md)
+- [Crawler Architecture](docs/crawler.md)
+- [API Reference](docs/api.md)
+- [Server Design](docs/server.md)
+- [Scalability](docs/scalability.md)
+- [Security](docs/security.md)
+- [Deployment](docs/deployment.md)
+- [Monitoring](docs/monitoring.md)
+- [Prompt Engineering](docs/prompts.md)
+- [Coding Standards](docs/coding-standards.md)
+- [Queue Architecture](docs/queues.md)
+- [Docker](docs/docker.md)
+- [llms.txt Convention](docs/llms-txt.md)
+- [Scripts Reference](docs/scripts.md)
+- [Roadmap](docs/roadmap.md)
+
+## Agents
+
+- Master Planner — Orchestrates full autonomous workflow
+- Google Places Discovery — Compliant geospatial business search
+- Website Intelligence — Firecrawl scraping, Lighthouse audit, tech detection
+- Contact Discovery — Hunter.io + Apollo.io email/contact enrichment
+- Opportunity Scorer — 0-100 lead scoring with HOT/WARM/COLD classification
+- Duplicate Detector — Multi-field deduplication
+
+## MCP Tools
+
+- discover_businesses — Full autonomous workflow
+- analyze_website — Website performance and SEO analysis
+- discover_contacts — Email and social profile discovery
+- run_pagespeed — Google PageSpeed Insights
+- get_leads — Retrieve stored leads with filtering
+- export_leads — Export to CSV, JSON, Markdown, Excel
+- get_stats — Platform statistics
+- geocode_location — Address to coordinates
+- check_plugin_health — Plugin health status
+
+## Tech Stack
+
+- TypeScript, Express, React, Vite, Tailwind CSS
+- Google Gemini API (with Ollama local LLM planned)
+- MCP (Model Context Protocol)
+- Google Places API, Firecrawl, Hunter.io, Apollo.io
+- In-memory database (PostgreSQL + Qdrant planned)

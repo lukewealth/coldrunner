@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" fill="none">
+  <circle cx="32" cy="32" r="7" fill="#60A5FA"/>
+  <circle cx="32" cy="13" r="3.5" fill="#60A5FA"/>
+  <circle cx="48.5" cy="41.5" r="3.5" fill="#60A5FA"/>
+  <circle cx="15.5" cy="41.5" r="3.5" fill="#60A5FA"/>
+  <path d="M37 15.5A18 18 0 0 1 46 39" stroke="#60A5FA" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M46 44A18 18 0 0 1 18 44" stroke="#60A5FA" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M18 39A18 18 0 0 1 27 15.5" stroke="#60A5FA" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <text x="76" y="30" font-family="Inter, SF Pro Display, -apple-system, system-ui, sans-serif" font-size="22" font-weight="700" fill="#F8FAFC" letter-spacing="-0.5">ColdRunners</text>
+  <text x="76" y="48" font-family="Inter, SF Pro Display, -apple-system, system-ui, sans-serif" font-size="10" font-weight="500" fill="#94A3B8" letter-spacing="2">BUSINESS INTELLIGENCE</text>
+</svg>
