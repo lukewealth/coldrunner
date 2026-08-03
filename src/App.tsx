@@ -19,6 +19,7 @@ import { CampaignTrackerView } from './components/CampaignTrackerView';
 import { NotificationsPanel } from './components/NotificationsPanel';
 import { JobSearchView } from './components/JobSearchView';
 import { JobMapView } from './components/JobMapView';
+import { LocalResearchView } from './components/LocalResearchView';
 import { LoginModal } from './components/LoginModal';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './components/ui/Toast';
@@ -257,6 +258,8 @@ function AppContent() {
         return <JobSearchView onOpenMap={() => setActiveTab('job-map')} />;
       case 'job-map':
         return <JobMapView onBack={() => setActiveTab('jobs')} />;
+      case 'local-research':
+        return <LocalResearchView />;
       default:
         return null;
     }

@@ -4,6 +4,8 @@ import { FirecrawlPlugin } from './firecrawl';
 import { HunterPlugin, ApolloPlugin } from './contact-discovery';
 import { SocialAnalyzerPlugin } from './social-analyzer';
 import { PageSpeedPlugin } from './pagespeed';
+import { SearXNGPlugin } from './searxng';
+import { OllamaPlugin } from './ollama';
 import { cache } from '../services/cache';
 import { config } from '../config';
 import { registerDefaultChannels } from '../services/channels';
@@ -24,6 +26,8 @@ export class PluginRegistry {
       new ApolloPlugin(),
       new SocialAnalyzerPlugin(),
       new PageSpeedPlugin(),
+      new SearXNGPlugin(),
+      new OllamaPlugin(),
     ];
 
     await Promise.all(pluginInstances.map((p) => p.initialize()));
@@ -116,3 +120,5 @@ export { FirecrawlPlugin } from './firecrawl';
 export { HunterPlugin, ApolloPlugin } from './contact-discovery';
 export { SocialAnalyzerPlugin } from './social-analyzer';
 export { PageSpeedPlugin } from './pagespeed';
+export { SearXNGPlugin } from './searxng';
+export { OllamaPlugin } from './ollama';

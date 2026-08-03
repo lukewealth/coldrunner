@@ -20,6 +20,7 @@ import {
   Map,
   Terminal,
   X,
+  Brain,
 } from 'lucide-react';
 import { ActiveTab } from '../types';
 
@@ -73,6 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'search', label: 'Agent Search', icon: <Bot className="w-[18px] h-[18px]" />, badge: isAgentRunning ? 'LIVE' : undefined },
         { id: 'explorer', label: 'Businesses', icon: <Building2 className="w-[18px] h-[18px]" />, badge: totalLeadsCount },
         { id: 'analyzer', label: 'Website Scanner', icon: <Globe2 className="w-[18px] h-[18px]" /> },
+        { id: 'local-research', label: 'Local Research', icon: <Brain className="w-[18px] h-[18px]" />, badge: 'AI' },
       ],
     },
     {

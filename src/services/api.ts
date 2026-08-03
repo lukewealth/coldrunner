@@ -472,4 +472,87 @@ export const api = {
 
   clearSearchCache: () =>
     request<{ success: boolean; message: string }>('/api/search/cache/clear', { method: 'POST' }),
+
+  askResearch: (question: string, context?: string, maxIterations?: number, model?: string) =>
+    request<any>('/api/research/ask', {
+      method: 'POST',
+      body: JSON.stringify({ question, context, maxIterations, model }),
+    }),
+
+  askFollowup: (sessionId: string, question: string) =>
+    request<any>('/api/research/followup', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, question }),
+    }),
+
+  getResearchHistory: () =>
+    request<{ sessions: any[]; total: number }>('/api/research/history'),
+
+  getResearchSession: (id: string) =>
+    request<any>(`/api/research/${id}`),
+
+  getLocalResearchStatus: () =>
+    request<{
+      searxng: { available: boolean; url: string };
+      ollama: { available: boolean; url: string; models: string[] };
+      sessionsCount: number;
+    }>('/api/research/local-status'),
+
+  createBrowserTask: (task: string, options?: { sessionId?: string; model?: string; maxSteps?: number; timeout?: number }) =>
+    request<any>('/api/browser/tasks', {
+      method: 'POST',
+      body: JSON.stringify({ task, ...options }),
+    }),
+
+  getBrowserTask: (id: string) =>
+    request<any>(`/api/browser/tasks/${id}`),
+
+  listBrowserTasks: (page?: number, limit?: number) => {
+    const params = new URLSearchParams();
+    if (page) params.set('page', String(page));
+    if (limit) params.set('limit', String(limit));
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return request<{ tasks: any[]; total: number }>(`/api/browser/tasks${qs}`);
+  },
+
+  stopBrowserTask: (id: string) =>
+    request<any>(`/api/browser/tasks/${id}/stop`, { method: 'PATCH' }),
+
+  getBrowserTaskLogs: async (id: string): Promise<string> => {
+    const res = await fetch(`/api/browser/tasks/${id}/logs`);
+    if (!res.ok) throw new Error(`Failed to get logs: ${res.status}`);
+    return res.text();
+  },
+
+  runBrowserTask: (task: string, options?: { sessionId?: string; model?: string; maxSteps?: number; timeout?: number }) =>
+    request<any>('/api/browser/run', {
+      method: 'POST',
+      body: JSON.stringify({ task, ...options }),
+    }),
+
+  createBrowserSession: (options?: { profile?: string; proxy?: { country?: string; username?: string; password?: string } }) =>
+    request<any>('/api/browser/sessions', {
+      method: 'POST',
+      body: JSON.stringify(options || {}),
+    }),
+
+  getBrowserSession: (id: string) =>
+    request<any>(`/api/browser/sessions/${id}`),
+
+  listBrowserSessions: (page?: number, limit?: number) => {
+    const params = new URLSearchParams();
+    if (page) params.set('page', String(page));
+    if (limit) params.set('limit', String(limit));
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return request<{ sessions: any[]; total: number }>(`/api/browser/sessions${qs}`);
+  },
+
+  stopBrowserSession: (id: string) =>
+    request<any>(`/api/browser/sessions/${id}/stop`, { method: 'PATCH' }),
+
+  getBrowserAccount: () =>
+    request<{ balance: number; plan: string }>('/api/browser/account'),
+
+  getBrowserStatus: () =>
+    request<{ available: boolean; apiUrl: string; hasApiKey: boolean }>('/api/browser/status'),
 };

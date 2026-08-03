@@ -4,9 +4,9 @@ dist/
 coverage/
 .DS_Store
 *.log
-.env*
 !.env.example
 data/local-store/
 *.db
 *.db-wal
 *.db-shm
+config.bat

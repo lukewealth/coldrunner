@@ -4,4 +4,5 @@ export { WebsiteAnalyzerAgent } from './website-analyzer';
 export { ContactDiscoveryAgent } from './contact-discovery';
 export { OpportunityScorerAgent } from './opportunity-scorer';
 export { DuplicateDetectorAgent } from './duplicate-detector';
+export { LocalResearchAgent } from './local-research';
 export type { Agent, AgentContext, AgentResult, AgentOrchestrator } from './types';

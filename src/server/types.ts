@@ -112,7 +112,8 @@ export type AgentType =
   | 'opportunity-scorer'
   | 'duplicate-detector'
   | 'report-generator'
-  | 'export-agent';
+  | 'export-agent'
+  | 'local-research';
 
 export interface AgentStatus {
   id: string;

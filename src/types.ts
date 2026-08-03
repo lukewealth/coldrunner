@@ -119,7 +119,8 @@ export type ActiveTab =
   | 'approvals'
   | 'settings'
   | 'jobs'
-  | 'job-map';
+  | 'job-map'
+  | 'local-research';
 
 export type JobType = 'remote' | 'hybrid' | 'onsite';
 export type JobExperienceLevel = 'entry' | 'mid' | 'senior' | 'lead' | 'principal';
@@ -289,4 +290,35 @@ export interface OutreachAnalytics {
   totalCampaigns: number;
   webhookDeliveries: number;
   webhookFailures: number;
+}
+
+export interface ResearchSource {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
+export interface ResearchStep {
+  iteration: number;
+  action: 'search' | 'analyze' | 'synthesize' | 'done';
+  query?: string;
+  findings?: string[];
+  reasoning?: string;
+}
+
+export interface ResearchResult {
+  answer: string;
+  sources: ResearchSource[];
+  steps: ResearchStep[];
+  model: string;
+  confidence: number;
+  followUpSuggestions: string[];
+}
+
+export interface ResearchSession {
+  id: string;
+  question: string;
+  result?: ResearchResult;
+  createdAt: string;
+  durationMs?: number;
 }
