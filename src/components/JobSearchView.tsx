@@ -60,9 +60,54 @@ export const JobSearchView: React.FC<JobSearchViewProps> = ({ onOpenMap }) => {
     setSearchSource('searching');
 
     try {
-      const result = await api.searchJobs(criteria);
-      setJobs(result.jobs);
-      setSearchSource(result.source);
+      const [jobResult, liveResult] = await Promise.allSettled([
+        api.searchJobs(criteria),
+        api.searchJobsLive(criteria.query, criteria.location || criteria.country, criteria.remoteOnly, criteria.maxResults),
+      ]);
+
+      const allJobs: JobListing[] = [];
+
+      if (jobResult.status === 'fulfilled' && jobResult.value.jobs) {
+        allJobs.push(...jobResult.value.jobs);
+      }
+
+      if (liveResult.status === 'fulfilled' && liveResult.value.jobs && liveResult.value.jobs.length > 0) {
+        const liveJobs = liveResult.value.jobs.map((j: any, i: number) => ({
+          id: `live-${Date.now()}-${i}`,
+          title: j.title || 'Software Engineer',
+          company: j.company || 'Unknown',
+          location: j.location || 'Remote',
+          city: (j.location || '').split(',')[0]?.trim() || 'Remote',
+          country: (j.location || '').split(',').pop()?.trim() || 'Global',
+          jobType: j.jobType || (criteria.remoteOnly ? 'remote' as const : 'onsite' as const),
+          experienceLevel: 'mid' as const,
+          contractType: 'full-time' as const,
+          salary: j.salary || undefined,
+          description: j.description || '',
+          requirements: [],
+          technologies: [],
+          benefits: [],
+          postedAt: j.postedAt || new Date().toISOString().split('T')[0],
+          applicationUrl: j.url,
+          source: 'Indeed (Live)',
+          isFeatured: false,
+          applicantCount: 0,
+        }));
+        allJobs.push(...liveJobs);
+        setSearchSource(`${jobResult.status === 'fulfilled' ? jobResult.value.source : 'local'} + Indeed Live`);
+      } else {
+        setSearchSource(jobResult.status === 'fulfilled' ? jobResult.value.source : 'fallback');
+      }
+
+      const seen = new Set<string>();
+      const deduped = allJobs.filter((j) => {
+        const key = `${j.title}-${j.company}`.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setJobs(deduped);
     } catch (err) {
       console.error('Job search failed:', err);
       setJobs(INITIAL_JOBS);

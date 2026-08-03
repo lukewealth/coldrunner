@@ -13,6 +13,8 @@ import { exportService } from './src/server/services/export';
 import { workflowEngine } from './src/server/services/workflow';
 import { mcpServer } from './src/server/mcp/server';
 import { eventBus } from './src/server/services/event-bus';
+import { searchSearXNG, clearSearXNGCache } from './src/server/services/searxng';
+import { searchGoogleMaps, searchIndeed, searchGoogle, crawlWebPage, isSurfSenseAvailable } from './src/server/services/surfsense';
 import { webhookService } from './src/server/services/webhooks';
 import { outreachService } from './src/server/services/outreach';
 import { campaignService } from './src/server/services/campaigns';
@@ -70,6 +72,75 @@ async function startServer() {
       plugins: pluginRegistry.getNames(),
       agents: masterPlanner.getStatus().map((a) => ({ name: a.name, status: a.status })),
     });
+  });
+
+  // ==================== REAL-TIME SEARCH (SearXNG + SurfSense) ====================
+  app.post('/api/search/web', async (req, res) => {
+    const { query, maxResults = 10 } = req.body || {};
+    if (!query) return res.status(400).json({ error: 'Query required' });
+    try {
+      const result = await searchSearXNG(query, Math.min(maxResults, 20));
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Web search failed', details: err.message });
+    }
+  });
+
+  app.post('/api/search/maps', async (req, res) => {
+    const { query, location } = req.body || {};
+    if (!query) return res.status(400).json({ error: 'Query required' });
+    try {
+      const results = await searchGoogleMaps(query, location || '');
+      res.json({ results, source: isSurfSenseAvailable() ? 'surfsense' : 'unavailable' });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Maps search failed', details: err.message });
+    }
+  });
+
+  app.post('/api/search/jobs-live', async (req, res) => {
+    const { query, location, remoteOnly = false, maxResults = 20 } = req.body || {};
+    if (!query) return res.status(400).json({ error: 'Query required' });
+    try {
+      const results = await searchIndeed(query, location || '', { remoteOnly, maxResults: Math.min(maxResults, 30) });
+      res.json({ jobs: results, source: isSurfSenseAvailable() ? 'surfsense-indeed' : 'unavailable' });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Job search failed', details: err.message });
+    }
+  });
+
+  app.post('/api/search/google', async (req, res) => {
+    const { query, maxResults = 10 } = req.body || {};
+    if (!query) return res.status(400).json({ error: 'Query required' });
+    try {
+      const results = await searchGoogle(query, Math.min(maxResults, 20));
+      res.json({ results, source: isSurfSenseAvailable() ? 'surfsense-google' : 'unavailable' });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Google search failed', details: err.message });
+    }
+  });
+
+  app.post('/api/search/crawl', async (req, res) => {
+    const { url } = req.body || {};
+    if (!url) return res.status(400).json({ error: 'URL required' });
+    try {
+      const result = await crawlWebPage(url);
+      res.json({ result, source: isSurfSenseAvailable() ? 'surfsense-crawl' : 'unavailable' });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Web crawl failed', details: err.message });
+    }
+  });
+
+  app.get('/api/search/status', (req, res) => {
+    res.json({
+      searxng: { configured: !!process.env.SEARXNG_BASE_URL?.trim(), url: process.env.SEARXNG_BASE_URL?.trim() || null },
+      surfsense: { configured: isSurfSenseAvailable(), url: process.env.SURFSENSE_API_URL?.trim() || null },
+      fallbacks: ['duckduckgo', 'wikipedia'],
+    });
+  });
+
+  app.post('/api/search/cache/clear', (req, res) => {
+    clearSearXNGCache();
+    res.json({ success: true, message: 'Search cache cleared' });
   });
 
   // ==================== DOCTOR ====================

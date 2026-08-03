@@ -91,6 +91,37 @@ export const SearchWizardView: React.FC<SearchWizardViewProps> = ({
     setCurrentStep('Initializing');
     setDiscoveredLeads([]);
 
+    addLog('Master Planner', 'info', `Initializing multi-source search for ${criteria.category} in ${criteria.city}`);
+    addLog('SearXNG Agent', 'info', `Querying Google, Bing, DuckDuckGo, Brave via SearXNG metasearch...`);
+
+    try {
+      const webResults = await api.searchWeb(`${criteria.category} in ${criteria.city} ${criteria.province}`, 10);
+      if (webResults.results.length > 0) {
+        addLog('SearXNG Agent', 'success', `Found ${webResults.results.length} web results via ${webResults.engines.join(', ')}`);
+        setProgressPercent(15);
+      } else {
+        addLog('SearXNG Agent', 'warning', 'No web results from SearXNG, using fallback engines');
+        setProgressPercent(10);
+      }
+    } catch {
+      addLog('SearXNG Agent', 'warning', 'SearXNG unavailable, falling back to DuckDuckGo + Wikipedia');
+      setProgressPercent(10);
+    }
+
+    addLog('SurfSense Agent', 'info', `Querying Google Maps for ${criteria.category} businesses...`);
+    try {
+      const mapsResults = await api.searchMaps(`${criteria.category} near ${criteria.city}`, `${criteria.city}, ${criteria.province}`);
+      if (mapsResults.results.length > 0) {
+        addLog('SurfSense Agent', 'success', `Found ${mapsResults.results.length} businesses via Google Maps (${mapsResults.source})`);
+      } else {
+        addLog('SurfSense Agent', 'info', 'No Google Maps results, will use Places API');
+      }
+      setProgressPercent(25);
+    } catch {
+      addLog('SurfSense Agent', 'warning', 'SurfSense Maps unavailable, using Google Places API');
+      setProgressPercent(25);
+    }
+
     const controller = api.runSearchStream(
       criteria,
       (log) => {
@@ -106,14 +137,14 @@ export const SearchWizardView: React.FC<SearchWizardViewProps> = ({
       },
       (progress) => {
         setCurrentStep(progress.step);
-        setProgressPercent(progress.percent);
+        setProgressPercent(Math.max(25, progress.percent));
       },
       (lead) => {
         setDiscoveredLeads((prev) => [...prev, lead]);
       },
       (complete) => {
         setIsSearching(false);
-        addLog('Master Planner', 'success', `Stream complete: ${complete.totalLeads} leads discovered`);
+        addLog('Master Planner', 'success', `Stream complete: ${complete.totalLeads} leads discovered from ${complete.source || 'multiple sources'}`);
       },
       (error) => {
         setIsSearching(false);

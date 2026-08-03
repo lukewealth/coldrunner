@@ -432,4 +432,44 @@ export const api = {
       topSkills: string[];
       avgSalary: Record<string, number>;
     }>('/api/jobs/stats'),
+
+  searchWeb: (query: string, maxResults?: number) =>
+    request<{ results: any[]; cached: boolean; query: string; engines: string[] }>('/api/search/web', {
+      method: 'POST',
+      body: JSON.stringify({ query, maxResults }),
+    }),
+
+  searchMaps: (query: string, location?: string) =>
+    request<{ results: any[]; source: string }>('/api/search/maps', {
+      method: 'POST',
+      body: JSON.stringify({ query, location }),
+    }),
+
+  searchJobsLive: (query: string, location?: string, remoteOnly?: boolean, maxResults?: number) =>
+    request<{ jobs: any[]; source: string }>('/api/search/jobs-live', {
+      method: 'POST',
+      body: JSON.stringify({ query, location, remoteOnly, maxResults }),
+    }),
+
+  searchGoogle: (query: string, maxResults?: number) =>
+    request<{ results: any[]; source: string }>('/api/search/google', {
+      method: 'POST',
+      body: JSON.stringify({ query, maxResults }),
+    }),
+
+  crawlPage: (url: string) =>
+    request<{ result: any; source: string }>('/api/search/crawl', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
+
+  getSearchStatus: () =>
+    request<{
+      searxng: { configured: boolean; url: string | null };
+      surfsense: { configured: boolean; url: string | null };
+      fallbacks: string[];
+    }>('/api/search/status'),
+
+  clearSearchCache: () =>
+    request<{ success: boolean; message: string }>('/api/search/cache/clear', { method: 'POST' }),
 };
