@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+data/local-store/
+*.db
+*.db-wal
+*.db-shm

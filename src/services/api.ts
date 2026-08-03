@@ -309,4 +309,29 @@ export const api = {
 
   deleteNotification: (id: string) =>
     request<{ success: boolean }>(`/api/notifications/${id}`, { method: 'DELETE' }),
+
+  getExportedLeads: (limit?: number) => {
+    const qs = limit ? `?limit=${limit}` : '';
+    return request<{ leads: BusinessLead[]; total: number }>(`/api/leads/exported${qs}`);
+  },
+
+  restoreExportedLead: (id: string) =>
+    request<{ success: boolean; lead: BusinessLead }>(`/api/leads/exported/${id}/restore`, { method: 'POST' }),
+
+  exportAndFlush: (format: string, leadIds?: string[], city?: string) =>
+    request<any>('/api/export/flush', {
+      method: 'POST',
+      body: JSON.stringify({ format, leadIds, city }),
+    }),
+
+  getLocalDbStatus: () =>
+    request<{
+      ip: string;
+      dbSizeBytes: number;
+      dbSizeHuman: string;
+      activeLeads: number;
+      archivedLeads: number;
+      totalWorkflows: number;
+      totalSearches: number;
+    }>('/api/local-db/status'),
 };

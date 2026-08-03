@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import { pluginRegistry } from './src/server/plugins';
 import { masterPlanner } from './src/server/agents';
 import { database } from './src/server/services/database';
+import { localDatabase } from './src/server/services/local-database';
 import { exportService } from './src/server/services/export';
 import { workflowEngine } from './src/server/services/workflow';
 import { mcpServer } from './src/server/mcp/server';
@@ -38,8 +39,18 @@ async function startServer() {
     next();
   });
 
+  const getClientIp = (req: express.Request): string => {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+      const ip = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : forwarded[0];
+      return ip;
+    }
+    return req.socket.remoteAddress || '127.0.0.1';
+  };
+
   await pluginRegistry.initialize();
   await database.initialize();
+  await localDatabase.initialize();
   await mcpServer.initialize();
 
   const getAi = () => {
@@ -79,6 +90,7 @@ async function startServer() {
 
   // ==================== AGENT SEARCH (Full Workflow) ====================
   app.post('/api/agents/run-search', async (req, res) => {
+    const ip = getClientIp(req);
     const criteria = req.body || {};
     const searchCriteria: SearchCriteria = {
       country: criteria.country || 'Canada',
@@ -107,6 +119,9 @@ async function startServer() {
 
     try {
       const result = await workflowEngine.startWorkflow(searchCriteria);
+      localDatabase.saveLeads(ip, result.leads);
+      localDatabase.addSearchHistory(ip, searchCriteria, result.leads.length);
+      localDatabase.saveWorkflow(ip, searchCriteria, result.leads, logs);
       res.json({
         leads: result.leads,
         source: 'agent_workflow',
@@ -119,12 +134,16 @@ async function startServer() {
       if (ai) {
         try {
           const fallbackLeads = await generateWithGemini(ai, searchCriteria);
+          localDatabase.saveLeads(ip, fallbackLeads);
+          localDatabase.addSearchHistory(ip, searchCriteria, fallbackLeads.length);
           res.json({ leads: fallbackLeads, source: 'gemini_fallback' });
         } catch (geminiErr: any) {
           res.status(500).json({ error: 'Workflow and Gemini fallback both failed', details: geminiErr.message });
         }
       } else {
         const simulatedLeads = generateSimulatedLeads(searchCriteria);
+        localDatabase.saveLeads(ip, simulatedLeads);
+        localDatabase.addSearchHistory(ip, searchCriteria, simulatedLeads.length);
         res.json({ leads: simulatedLeads, source: 'simulated_fallback' });
       }
     }
@@ -276,10 +295,11 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
     res.json(result);
   });
 
-  // ==================== DATABASE / LEADS ====================
+  // ==================== DATABASE / LEADS (IP-scoped local storage) ====================
   app.get('/api/leads', (req, res) => {
+    const ip = getClientIp(req);
     const { grade, category, city, websiteStatus, minScore, status, limit } = req.query;
-    const leads = database.searchLeads({
+    const leads = localDatabase.searchLeads(ip, {
       grade: grade as string,
       category: category as string,
       city: city as string,
@@ -291,30 +311,35 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
   });
 
   app.get('/api/leads/:id', (req, res) => {
-    const lead = database.getLead(req.params.id);
+    const ip = getClientIp(req);
+    const lead = localDatabase.getLead(ip, req.params.id);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     res.json(lead);
   });
 
   app.put('/api/leads/:id', (req, res) => {
-    const updated = database.updateLead(req.params.id, req.body);
+    const ip = getClientIp(req);
+    const updated = localDatabase.updateLead(ip, req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Lead not found' });
     res.json(updated);
   });
 
   app.delete('/api/leads/:id', (req, res) => {
-    const deleted = database.deleteLead(req.params.id);
+    const ip = getClientIp(req);
+    const deleted = localDatabase.deleteLead(ip, req.params.id);
     res.json({ success: deleted });
   });
 
   app.get('/api/stats', (req, res) => {
-    res.json(database.getStats());
+    const ip = getClientIp(req);
+    res.json(localDatabase.getStats(ip));
   });
 
   // ==================== EXPORT ====================
   app.post('/api/export', (req, res) => {
-    const { format = 'json', leadIds, city } = req.body;
-    let leads = database.getAllLeads();
+    const ip = getClientIp(req);
+    const { format = 'json', leadIds, city, flush = false } = req.body;
+    let leads = localDatabase.getAllLeads(ip);
     if (leadIds?.length > 0) {
       leads = leads.filter((l) => leadIds.includes(l.id));
     }
@@ -349,11 +374,18 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(content);
+
+    // Flush exported leads: archive them then remove from active store
+    if (flush && leads.length > 0) {
+      const exportedIds = leads.map(l => l.id);
+      localDatabase.exportAndFlush(ip, exportedIds, format);
+    }
   });
 
   app.get('/api/export/preview', (req, res) => {
+    const ip = getClientIp(req);
     const { format = 'json', limit = '10' } = req.query;
-    const leads = database.getAllLeads().slice(0, parseInt(limit as string, 10));
+    const leads = localDatabase.getAllLeads(ip).slice(0, parseInt(limit as string, 10));
 
     switch (format) {
       case 'csv':
@@ -407,16 +439,19 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
 
   // ==================== SEARCH HISTORY ====================
   app.get('/api/search/history', (req, res) => {
-    res.json({ history: database.getSearchHistory() });
+    const ip = getClientIp(req);
+    res.json({ history: localDatabase.getSearchHistory(ip) });
   });
 
   // ==================== WORKFLOW ====================
   app.get('/api/workflows', (req, res) => {
-    res.json({ workflows: database.getAllWorkflows() });
+    const ip = getClientIp(req);
+    res.json({ workflows: localDatabase.getAllWorkflows(ip) });
   });
 
   app.get('/api/workflows/:id', (req, res) => {
-    const wf = database.getWorkflow(req.params.id) || workflowEngine.getWorkflowStatus(req.params.id);
+    const ip = getClientIp(req);
+    const wf = localDatabase.getWorkflow(ip, req.params.id) || workflowEngine.getWorkflowStatus(req.params.id);
     if (!wf) return res.status(404).json({ error: 'Workflow not found' });
     res.json(wf);
   });
@@ -461,6 +496,7 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
   });
 
   app.post('/api/cron/jobs/:id/run', async (req, res) => {
+    const ip = getClientIp(req);
     const job = cronJobs.get(req.params.id);
     if (!job) return res.status(404).json({ error: 'Cron job not found' });
     job.status = 'running';
@@ -468,6 +504,8 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
     job.runCount += 1;
     try {
       const result = await workflowEngine.startWorkflow(job.criteria);
+      localDatabase.saveLeads(ip, result.leads);
+      localDatabase.addSearchHistory(ip, job.criteria, result.leads.length);
       job.status = 'completed';
       res.json({ success: true, leads: result.leads.length, workflowId: result.workflowId });
     } catch (err: any) {
@@ -500,8 +538,9 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
 
   // ==================== ANALYTICS / METRICS ====================
   app.get('/api/analytics/overview', (req, res) => {
-    const stats = database.getStats();
-    const workflows = database.getAllWorkflows();
+    const ip = getClientIp(req);
+    const stats = localDatabase.getStats(ip);
+    const workflows = localDatabase.getAllWorkflows(ip);
     res.json({
       ...stats,
       recentWorkflows: workflows.slice(-5).map((w: any) => ({
@@ -694,6 +733,7 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
 
   // ==================== BATCH OPERATIONS ====================
   app.post('/api/leads/batch/update', (req, res) => {
+    const ip = getClientIp(req);
     const { ids, status } = req.body || {};
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: 'ids[] required' });
@@ -701,23 +741,25 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
     if (!status) {
       return res.status(400).json({ error: 'status required' });
     }
-    const result = database.batchUpdateStatus(ids, status);
+    const result = localDatabase.batchUpdateStatus(ip, ids, status);
     res.json(result);
   });
 
   app.post('/api/leads/batch/delete', (req, res) => {
+    const ip = getClientIp(req);
     const { ids } = req.body || {};
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: 'ids[] required' });
     }
-    const result = database.batchDelete(ids);
+    const result = localDatabase.batchDelete(ip, ids);
     res.json(result);
   });
 
   // ==================== ADVANCED SEARCH ====================
   app.post('/api/leads/search', (req, res) => {
+    const ip = getClientIp(req);
     const query = req.body || {};
-    const result = database.advancedSearch({
+    const result = localDatabase.advancedSearch(ip, {
       searchTerm: query.searchTerm,
       grades: query.grades,
       categories: query.categories,
@@ -734,6 +776,85 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
       offset: query.offset,
     });
     res.json(result);
+  });
+
+  // ==================== EXPORTED LEADS ARCHIVE ====================
+  app.get('/api/leads/exported', (req, res) => {
+    const ip = getClientIp(req);
+    const { limit } = req.query;
+    const exported = localDatabase.getExportedLeads(ip, limit ? parseInt(limit as string, 10) : 100);
+    res.json({ leads: exported, total: exported.length });
+  });
+
+  app.post('/api/leads/exported/:id/restore', (req, res) => {
+    const ip = getClientIp(req);
+    const restored = localDatabase.restoreLead(ip, req.params.id);
+    if (!restored) return res.status(404).json({ error: 'Exported lead not found' });
+    res.json({ success: true, lead: restored });
+  });
+
+  // ==================== EXPORT & FLUSH ====================
+  app.post('/api/export/flush', (req, res) => {
+    const ip = getClientIp(req);
+    const { format = 'json', leadIds, city } = req.body;
+    let leads = localDatabase.getAllLeads(ip);
+    if (leadIds?.length > 0) {
+      leads = leads.filter((l) => leadIds.includes(l.id));
+    }
+    if (leads.length === 0) {
+      return res.status(400).json({ error: 'No leads to export and flush' });
+    }
+
+    let content: string;
+    let mimeType: string;
+    let filename: string;
+    const timestamp = new Date().toISOString().split('T')[0];
+
+    switch (format) {
+      case 'csv':
+        content = exportService.generateCSV(leads, { includeSocials: true });
+        mimeType = 'text/csv';
+        filename = `coldrunners_leads_${timestamp}.csv`;
+        break;
+      case 'markdown':
+        content = exportService.generateMarkdown(leads, city);
+        mimeType = 'text/markdown';
+        filename = `coldrunners_report_${timestamp}.md`;
+        break;
+      case 'excel':
+        content = exportService.generateExcelXML(leads);
+        mimeType = 'application/vnd.ms-excel';
+        filename = `coldrunners_leads_${timestamp}.xls`;
+        break;
+      default:
+        content = exportService.generateJSON(leads, city);
+        mimeType = 'application/json';
+        filename = `coldrunners_leads_${timestamp}.json`;
+    }
+
+    const exportedIds = leads.map(l => l.id);
+    const flushResult = localDatabase.exportAndFlush(ip, exportedIds, format);
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(content);
+  });
+
+  // ==================== LOCAL DB DIAGNOSTICS ====================
+  app.get('/api/local-db/status', (req, res) => {
+    const ip = getClientIp(req);
+    const stats = localDatabase.getStats(ip);
+    const dbSize = localDatabase.getDbSize(ip);
+    const exportedCount = localDatabase.getExportedLeads(ip, 10000).length;
+    res.json({
+      ip: ip.substring(0, 8) + '***',
+      dbSizeBytes: dbSize,
+      dbSizeHuman: dbSize > 1048576 ? `${(dbSize / 1048576).toFixed(2)} MB` : `${(dbSize / 1024).toFixed(1)} KB`,
+      activeLeads: stats.totalLeads,
+      archivedLeads: exportedCount,
+      totalWorkflows: stats.totalWorkflows,
+      totalSearches: stats.totalSearches,
+    });
   });
 
   // ==================== NOTIFICATIONS ====================
