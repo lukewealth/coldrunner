@@ -28,6 +28,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { BusinessLead, LeadGrade, LeadStatus, ActiveTab } from '../types';
+import { HeroStarRating, OpportunityStars, ScoreBadge } from './ui/HeroStar';
 
 interface BusinessExplorerViewProps {
   leads: BusinessLead[];
@@ -375,6 +376,7 @@ export const BusinessExplorerView: React.FC<BusinessExplorerViewProps> = ({
                   </button>
                 </th>
                 <th className="py-3.5 px-4">Business & Owner</th>
+                <th className="py-3.5 px-4">Rating</th>
                 <th className="py-3.5 px-4">Website Flaw</th>
                 <th className="py-3.5 px-4">Contact Details</th>
                 <th className="py-3.5 px-4">Est. Revenue</th>
@@ -414,6 +416,18 @@ export const BusinessExplorerView: React.FC<BusinessExplorerViewProps> = ({
                       </div>
                     </td>
 
+                    {/* Rating */}
+                    <td className="py-3.5 px-4">
+                      <HeroStarRating
+                        rating={lead.rating}
+                        size="xs"
+                        color="amber"
+                        showValue={true}
+                        showCount={true}
+                        reviewCount={lead.reviewCount}
+                      />
+                    </td>
+
                     {/* Website Flaw */}
                     <td className="py-3.5 px-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
@@ -444,10 +458,8 @@ export const BusinessExplorerView: React.FC<BusinessExplorerViewProps> = ({
                     {/* Opportunity Score */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center space-x-1.5">
-                        <span className={`font-bold ${lead.opportunityScore >= 85 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                          {lead.opportunityScore}%
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">({lead.grade})</span>
+                        <OpportunityStars score={lead.opportunityScore} size="xs" />
+                        <ScoreBadge score={lead.opportunityScore} size="sm" />
                       </div>
                     </td>
 

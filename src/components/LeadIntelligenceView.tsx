@@ -10,6 +10,7 @@ import {
   Layers
 } from 'lucide-react';
 import { BusinessLead } from '../types';
+import { HeroStarRating, OpportunityStars, ScoreBadge } from './ui/HeroStar';
 
 interface LeadIntelligenceViewProps {
   leads: BusinessLead[];
@@ -143,21 +144,28 @@ export const LeadIntelligenceView: React.FC<LeadIntelligenceViewProps> = ({ lead
           <div className="space-y-3">
             {leads.map((lead) => (
               <div key={lead.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center justify-between">
-                <div>
+                <div className="flex-1">
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-slate-900 text-sm">{lead.name}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      lead.grade === 'HOT' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                    }`}>
-                      {lead.grade} ({lead.opportunityScore}%)
-                    </span>
+                    <ScoreBadge score={lead.opportunityScore} size="sm" />
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {lead.category} • {lead.city} • Est. {lead.estimatedRevenue}
                   </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <OpportunityStars score={lead.opportunityScore} size="xs" />
+                    <HeroStarRating
+                      rating={lead.rating}
+                      size="xs"
+                      color="amber"
+                      showValue={true}
+                      showCount={true}
+                      reviewCount={lead.reviewCount}
+                    />
+                  </div>
                 </div>
 
-                <div className="text-right">
+                <div className="text-right ml-4">
                   <span className="text-xs text-slate-400 block font-medium">Need Urgency</span>
                   <span className="text-xs font-bold text-emerald-600">{lead.recommendedService}</span>
                 </div>

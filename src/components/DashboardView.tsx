@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { BusinessLead, AgentStatusItem, ActiveTab } from '../types';
 import { StaggerList, StaggerItem } from './ui/StaggerList';
+import { HeroStarRating, OpportunityStars, ScoreBadge } from './ui/HeroStar';
 import { api } from '../services/api';
 
 interface DashboardViewProps {
@@ -406,7 +407,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Rating:</span>
-                  <span className="font-bold text-emerald-600">★ {activeMapPin.rating} ({activeMapPin.reviewCount} reviews)</span>
+                  <HeroStarRating
+                    rating={activeMapPin.rating}
+                    size="xs"
+                    color="amber"
+                    showValue={true}
+                    showCount={true}
+                    reviewCount={activeMapPin.reviewCount}
+                  />
                 </div>
               </div>
 
@@ -540,17 +548,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                   </td>
                   <td className="py-3.5 px-4 font-medium">
-                    <span className="text-emerald-600 font-bold">★ {lead.rating}</span> ({lead.reviewCount})
+                    <HeroStarRating
+                      rating={lead.rating}
+                      size="xs"
+                      color="amber"
+                      showValue={true}
+                      showCount={true}
+                      reviewCount={lead.reviewCount}
+                    />
                   </td>
                   <td className="py-3.5 px-4">
                     <div className="flex items-center space-x-2">
-                      <div className="w-16 bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-full rounded-full"
-                          style={{ width: `${lead.opportunityScore}%` }}
-                        />
-                      </div>
-                      <span className="font-bold text-emerald-600">{lead.opportunityScore}%</span>
+                      <OpportunityStars score={lead.opportunityScore} size="xs" />
+                      <ScoreBadge score={lead.opportunityScore} size="sm" />
                     </div>
                   </td>
                   <td className="py-3.5 px-4 text-right space-x-2">

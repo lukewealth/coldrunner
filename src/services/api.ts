@@ -254,4 +254,59 @@ export const api = {
 
   getMcpResource: (uri: string) =>
     request<any>(`/api/mcp/resources/${encodeURIComponent(uri)}`),
+
+  batchUpdateLeadStatus: (ids: string[], status: string) =>
+    request<{ updated: number; leads: BusinessLead[] }>('/api/leads/batch/update', {
+      method: 'POST',
+      body: JSON.stringify({ ids, status }),
+    }),
+
+  batchDeleteLeads: (ids: string[]) =>
+    request<{ deleted: number }>('/api/leads/batch/delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
+
+  advancedSearch: (query: {
+    searchTerm?: string;
+    grades?: string[];
+    categories?: string[];
+    cities?: string[];
+    websiteStatuses?: string[];
+    minScore?: number;
+    maxScore?: number;
+    minRating?: number;
+    minReviews?: number;
+    status?: string[];
+    sortBy?: string;
+    sortDir?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }) =>
+    request<{ leads: BusinessLead[]; total: number }>('/api/leads/search', {
+      method: 'POST',
+      body: JSON.stringify(query),
+    }),
+
+  getNotifications: (params?: { limit?: number; unreadOnly?: boolean }) => {
+    const qs = params ? '?' + new URLSearchParams(
+      Object.entries(params).reduce((acc, [k, v]) => {
+        if (v !== undefined) acc[k] = String(v);
+        return acc;
+      }, {} as Record<string, string>)
+    ).toString() : '';
+    return request<{ notifications: any[]; total: number; unreadCount: number }>(`/api/notifications${qs}`);
+  },
+
+  getUnreadNotificationCount: () =>
+    request<{ count: number }>('/api/notifications/unread-count'),
+
+  markNotificationRead: (id: string) =>
+    request<any>(`/api/notifications/${id}/read`, { method: 'POST' }),
+
+  markAllNotificationsRead: () =>
+    request<{ success: boolean; markedRead: number }>('/api/notifications/read-all', { method: 'POST' }),
+
+  deleteNotification: (id: string) =>
+    request<{ success: boolean }>(`/api/notifications/${id}`, { method: 'DELETE' }),
 };

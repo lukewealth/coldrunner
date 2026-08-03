@@ -15,6 +15,7 @@ import { AgentMemoryView } from './components/AgentMemoryView';
 import { TerminalLogsOverlay } from './components/TerminalLogsOverlay';
 import { ApprovalQueueView } from './components/ApprovalQueueView';
 import { CampaignTrackerView } from './components/CampaignTrackerView';
+import { NotificationsPanel } from './components/NotificationsPanel';
 import { ToastProvider, useToast } from './components/ui/Toast';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PageTransition } from './components/ui/PageTransition';
@@ -23,6 +24,7 @@ import { INITIAL_LEADS, INITIAL_AGENTS } from './data/mockLeads';
 import { INITIAL_TERMINAL_LOGS } from './data/initialLogs';
 import { BusinessLead, AgentStatusItem, SearchFilterCriteria, ActiveTab, LeadStatus, TerminalLog } from './types';
 import { api } from './services/api';
+import { useSSE } from './services/useSSE';
 
 function AppContent() {
   const [leads, setLeads] = useState<BusinessLead[]>(INITIAL_LEADS);
@@ -34,7 +36,11 @@ function AppContent() {
   const [isAgentRunning, setIsAgentRunning] = useState<boolean>(false);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState<boolean>(true);
   const [apiHealth, setApiHealth] = useState<'ok' | 'degraded' | 'offline'>('ok');
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const { addToast } = useToast();
+
+  const { isConnected: sseConnected, on: onSSE } = useSSE();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoadingDashboard(false), 800);
@@ -61,7 +67,34 @@ function AppContent() {
         }
       })
       .catch(() => {});
+
+    api.getUnreadNotificationCount()
+      .then((data) => setUnreadNotifications(data.count))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      api.getUnreadNotificationCount()
+        .then((data) => setUnreadNotifications(data.count))
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSSE('*', (event) => {
+      if (event.type === 'notification') {
+        setUnreadNotifications((c) => c + 1);
+        addToast({
+          type: 'info',
+          title: event.payload?.title || 'New Notification',
+          message: event.payload?.message || '',
+        });
+      }
+    });
+    return unsub;
+  }, [onSSE, addToast]);
 
   const handleAddLog = useCallback((log: TerminalLog) => {
     setTerminalLogs((prev) => [...prev, log]);
@@ -263,6 +296,9 @@ function AppContent() {
         onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
         terminalLogsCount={terminalLogs.length}
         apiHealth={apiHealth}
+        notificationCount={unreadNotifications}
+        onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
+        sseConnected={sseConnected}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
@@ -283,6 +319,11 @@ function AppContent() {
         isOpen={isTerminalOpen}
         onClose={() => setIsTerminalOpen(false)}
         activeTab={activeTab}
+      />
+
+      <NotificationsPanel
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
       />
 
       {selectedLead && (

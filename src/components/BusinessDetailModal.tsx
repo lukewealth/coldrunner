@@ -32,6 +32,7 @@ import {
 import { BusinessLead, ActiveTab } from '../types';
 import { api } from '../services/api';
 import { useToast } from './ui/Toast';
+import { HeroStarRating, OpportunityStars, ScoreBadge } from './ui/HeroStar';
 
 interface BusinessDetailModalProps {
   lead: BusinessLead | null;
@@ -396,7 +397,16 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                 </div>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
                   <span className="text-[10px] font-semibold uppercase text-slate-400">Google Reviews Reputation</span>
-                  <div className="text-xl font-bold text-emerald-600">★ {lead.rating} ({lead.reviewCount} Reviews)</div>
+                  <div className="flex items-center gap-2">
+                    <HeroStarRating
+                      rating={lead.rating}
+                      size="sm"
+                      color="amber"
+                      showValue={true}
+                      showCount={true}
+                      reviewCount={lead.reviewCount}
+                    />
+                  </div>
                   <p className="text-[11px] text-slate-500">High brand reputation ready for web conversion boost</p>
                 </div>
               </div>

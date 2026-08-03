@@ -17,7 +17,9 @@ import {
   Wifi,
   WifiOff,
   Mail,
-  CheckSquare
+  CheckSquare,
+  Bell,
+  Radio,
 } from 'lucide-react';
 import { ActiveTab } from '../types';
 import { Logo } from './Logo';
@@ -31,6 +33,9 @@ interface NavbarProps {
   onToggleTerminal?: () => void;
   terminalLogsCount?: number;
   apiHealth?: 'ok' | 'degraded' | 'offline';
+  notificationCount?: number;
+  onToggleNotifications?: () => void;
+  sseConnected?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -42,6 +47,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleTerminal,
   terminalLogsCount = 0,
   apiHealth = 'ok',
+  notificationCount = 0,
+  onToggleNotifications,
+  sseConnected = false,
 }) => {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string | number }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <Layers className="w-4 h-4" /> },
@@ -116,6 +124,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           <div className="flex items-center space-x-3">
+            {onToggleNotifications && (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={onToggleNotifications}
+                className="relative flex items-center justify-center p-2 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-all cursor-pointer border border-slate-200"
+                title="Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {notificationCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
+              </motion.button>
+            )}
+
             {onToggleTerminal && (
               <motion.button
                 whileTap={{ scale: 0.95 }}
@@ -138,6 +162,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {isAgentRunning ? 'Agents Active' : 'Agents Idle'}
               </span>
             </div>
+
+            {sseConnected && (
+              <div className="hidden md:flex items-center space-x-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] text-emerald-700 font-mono font-bold">
+                <Radio className="w-3 h-3 text-emerald-500 animate-pulse" />
+                <span>LIVE</span>
+              </div>
+            )}
 
             <motion.button
               whileHover={{ scale: 1.03 }}

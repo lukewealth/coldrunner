@@ -16,6 +16,7 @@ import { webhookService } from './src/server/services/webhooks';
 import { outreachService } from './src/server/services/outreach';
 import { campaignService } from './src/server/services/campaigns';
 import { doctorService } from './src/server/services/doctor';
+import { notificationService } from './src/server/services/notifications';
 import { SearchCriteria, BusinessLead, WorkflowLog } from './src/server/types';
 
 dotenv.config();
@@ -688,6 +689,116 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
       totalCampaigns: campaigns.length,
       webhookDeliveries: webhookService.getDeliveryLog(1000).filter(d => d.status === 'success').length,
       webhookFailures: webhookService.getDeliveryLog(1000).filter(d => d.status === 'failed').length,
+    });
+  });
+
+  // ==================== BATCH OPERATIONS ====================
+  app.post('/api/leads/batch/update', (req, res) => {
+    const { ids, status } = req.body || {};
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids[] required' });
+    }
+    if (!status) {
+      return res.status(400).json({ error: 'status required' });
+    }
+    const result = database.batchUpdateStatus(ids, status);
+    res.json(result);
+  });
+
+  app.post('/api/leads/batch/delete', (req, res) => {
+    const { ids } = req.body || {};
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids[] required' });
+    }
+    const result = database.batchDelete(ids);
+    res.json(result);
+  });
+
+  // ==================== ADVANCED SEARCH ====================
+  app.post('/api/leads/search', (req, res) => {
+    const query = req.body || {};
+    const result = database.advancedSearch({
+      searchTerm: query.searchTerm,
+      grades: query.grades,
+      categories: query.categories,
+      cities: query.cities,
+      websiteStatuses: query.websiteStatuses,
+      minScore: query.minScore,
+      maxScore: query.maxScore,
+      minRating: query.minRating,
+      minReviews: query.minReviews,
+      status: query.status,
+      sortBy: query.sortBy,
+      sortDir: query.sortDir,
+      limit: query.limit,
+      offset: query.offset,
+    });
+    res.json(result);
+  });
+
+  // ==================== NOTIFICATIONS ====================
+  app.get('/api/notifications', (req, res) => {
+    const { limit, unreadOnly } = req.query;
+    const notifications = unreadOnly === 'true'
+      ? notificationService.getUnread()
+      : notificationService.getAll(limit ? parseInt(limit as string, 10) : 100);
+    res.json({
+      notifications,
+      total: notifications.length,
+      unreadCount: notificationService.getUnreadCount(),
+    });
+  });
+
+  app.get('/api/notifications/unread-count', (req, res) => {
+    res.json({ count: notificationService.getUnreadCount() });
+  });
+
+  app.post('/api/notifications/:id/read', (req, res) => {
+    const notif = notificationService.markRead(req.params.id);
+    if (!notif) return res.status(404).json({ error: 'Notification not found' });
+    res.json(notif);
+  });
+
+  app.post('/api/notifications/read-all', (req, res) => {
+    const count = notificationService.markAllRead();
+    res.json({ success: true, markedRead: count });
+  });
+
+  app.delete('/api/notifications/:id', (req, res) => {
+    const deleted = notificationService.delete(req.params.id);
+    res.json({ success: deleted });
+  });
+
+  // ==================== SSE REAL-TIME EVENTS ====================
+  const sseClients: Map<string, { res: any; unsubscribe: () => void }> = new Map();
+
+  app.get('/api/events/stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const clientId = `sse-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+
+    const unsubscribe = notificationService.subscribe(clientId, (notification) => {
+      res.write(`data: ${JSON.stringify({ type: 'notification', payload: notification })}\n\n`);
+    });
+
+    const busUnsubscribe = eventBus.onAll((event) => {
+      res.write(`data: ${JSON.stringify({ type: 'event', payload: event })}\n\n`);
+    });
+
+    sseClients.set(clientId, { res, unsubscribe: () => { unsubscribe(); busUnsubscribe(); } });
+
+    res.write(`data: ${JSON.stringify({ type: 'connected', clientId })}\n\n`);
+
+    req.on('close', () => {
+      const client = sseClients.get(clientId);
+      if (client) {
+        client.unsubscribe();
+        sseClients.delete(clientId);
+      }
     });
   });
 

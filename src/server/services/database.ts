@@ -102,6 +102,102 @@ export class DatabaseService {
     this.workflows.clear();
     this.searchHistory = [];
   }
+
+  batchUpdateStatus(ids: string[], status: string): { updated: number; leads: BusinessLead[] } {
+    let updated = 0;
+    const leads: BusinessLead[] = [];
+    for (const id of ids) {
+      const result = this.updateLead(id, { status: status as any });
+      if (result) {
+        updated++;
+        leads.push(result);
+      }
+    }
+    return { updated, leads };
+  }
+
+  batchDelete(ids: string[]): { deleted: number } {
+    let deleted = 0;
+    for (const id of ids) {
+      if (this.leads.delete(id)) deleted++;
+    }
+    return { deleted };
+  }
+
+  advancedSearch(query: {
+    searchTerm?: string;
+    grades?: string[];
+    categories?: string[];
+    cities?: string[];
+    websiteStatuses?: string[];
+    minScore?: number;
+    maxScore?: number;
+    minRating?: number;
+    minReviews?: number;
+    status?: string[];
+    sortBy?: string;
+    sortDir?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): { leads: BusinessLead[]; total: number } {
+    let results = this.getAllLeads();
+
+    if (query.searchTerm) {
+      const term = query.searchTerm.toLowerCase();
+      results = results.filter((l) =>
+        l.name.toLowerCase().includes(term) ||
+        l.category.toLowerCase().includes(term) ||
+        l.city.toLowerCase().includes(term) ||
+        l.email.toLowerCase().includes(term) ||
+        (l.ownerName && l.ownerName.toLowerCase().includes(term))
+      );
+    }
+    if (query.grades && query.grades.length > 0) {
+      results = results.filter((l) => query.grades!.includes(l.grade));
+    }
+    if (query.categories && query.categories.length > 0) {
+      results = results.filter((l) => query.categories!.includes(l.category));
+    }
+    if (query.cities && query.cities.length > 0) {
+      results = results.filter((l) => query.cities!.some((c) => c.toLowerCase() === l.city.toLowerCase()));
+    }
+    if (query.websiteStatuses && query.websiteStatuses.length > 0) {
+      results = results.filter((l) => query.websiteStatuses!.includes(l.websiteStatus));
+    }
+    if (query.minScore !== undefined) {
+      results = results.filter((l) => l.opportunityScore >= query.minScore!);
+    }
+    if (query.maxScore !== undefined) {
+      results = results.filter((l) => l.opportunityScore <= query.maxScore!);
+    }
+    if (query.minRating !== undefined) {
+      results = results.filter((l) => l.rating >= query.minRating!);
+    }
+    if (query.minReviews !== undefined) {
+      results = results.filter((l) => l.reviewCount >= query.minReviews!);
+    }
+    if (query.status && query.status.length > 0) {
+      results = results.filter((l) => query.status!.includes(l.status));
+    }
+
+    const total = results.length;
+
+    if (query.sortBy) {
+      const dir = query.sortDir === 'asc' ? 1 : -1;
+      results.sort((a, b) => {
+        const aVal = (a as any)[query.sortBy!];
+        const bVal = (b as any)[query.sortBy!];
+        if (typeof aVal === 'string') return aVal.localeCompare(bVal) * dir;
+        return ((aVal as number) - (bVal as number)) * dir;
+      });
+    }
+
+    const offset = query.offset || 0;
+    const limit = query.limit || 100;
+    results = results.slice(offset, offset + limit);
+
+    return { leads: results, total };
+  }
 }
 
 export const database = new DatabaseService();
