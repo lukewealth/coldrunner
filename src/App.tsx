@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { TopNav } from './components/TopNav';
 import { Sidebar } from './components/Sidebar';
@@ -13,6 +13,7 @@ import { ReportsView } from './components/ReportsView';
 import { ExportCenterView } from './components/ExportCenterView';
 import { SettingsView } from './components/SettingsView';
 import { AgentMemoryView } from './components/AgentMemoryView';
+import { TerminalLogsOverlay } from './components/TerminalLogsOverlay';
 import { ApprovalQueueView } from './components/ApprovalQueueView';
 import { CampaignTrackerView } from './components/CampaignTrackerView';
 import { NotificationsPanel } from './components/NotificationsPanel';
@@ -25,13 +26,16 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PageTransition } from './components/ui/PageTransition';
 import { SkeletonDashboard } from './components/ui/Skeleton';
 import { INITIAL_LEADS, INITIAL_AGENTS } from './data/mockLeads';
-import { BusinessLead, AgentStatusItem, SearchFilterCriteria, ActiveTab, LeadStatus } from './types';
+import { INITIAL_TERMINAL_LOGS } from './data/initialLogs';
+import { BusinessLead, AgentStatusItem, SearchFilterCriteria, ActiveTab, LeadStatus, TerminalLog } from './types';
 import { api } from './services/api';
 import { useSSE } from './services/useSSE';
 
 function AppContent() {
   const [leads, setLeads] = useState<BusinessLead[]>(INITIAL_LEADS);
   const [agents, setAgents] = useState<AgentStatusItem[]>(INITIAL_AGENTS);
+  const [terminalLogs, setTerminalLogs] = useState<TerminalLog[]>(INITIAL_TERMINAL_LOGS);
+  const [isTerminalOpen, setIsTerminalOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedLead, setSelectedLead] = useState<BusinessLead | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState<boolean>(false);
@@ -98,6 +102,14 @@ function AppContent() {
     });
     return unsub;
   }, [onSSE, addToast]);
+
+  const handleAddLog = useCallback((log: TerminalLog) => {
+    setTerminalLogs((prev) => [...prev, log]);
+  }, []);
+
+  const handleClearLogs = useCallback(() => {
+    setTerminalLogs([]);
+  }, []);
 
   const handleExecuteSearch = async (criteria: SearchFilterCriteria): Promise<BusinessLead[]> => {
     setIsAgentRunning(true);
@@ -262,7 +274,8 @@ function AppContent() {
         totalLeadsCount={leads.length}
         hotLeadsCount={hotLeadsCount}
         isAgentRunning={isAgentRunning}
-        terminalLogsCount={0}
+        terminalLogsCount={terminalLogs.length}
+        onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -274,6 +287,7 @@ function AppContent() {
           notificationCount={unreadNotifications}
           onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
           sseConnected={sseConnected}
         />
 
@@ -289,6 +303,16 @@ function AppContent() {
           </div>
         </main>
       </div>
+
+      <TerminalLogsOverlay
+        logs={terminalLogs}
+        onClearLogs={handleClearLogs}
+        onAddLog={handleAddLog}
+        isAgentRunning={isAgentRunning}
+        isOpen={isTerminalOpen}
+        onClose={() => setIsTerminalOpen(false)}
+        activeTab={activeTab}
+      />
 
       <NotificationsPanel
         isOpen={isNotificationsOpen}

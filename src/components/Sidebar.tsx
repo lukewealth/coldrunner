@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Layers,
@@ -34,6 +34,7 @@ interface SidebarProps {
   hotLeadsCount: number;
   isAgentRunning: boolean;
   terminalLogsCount: number;
+  onToggleTerminal?: () => void;
 }
 
 interface NavGroup {
@@ -52,7 +53,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   hotLeadsCount,
   isAgentRunning,
   terminalLogsCount,
+  onToggleTerminal,
 }) => {
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const navGroups: NavGroup[] = [
     {
       label: 'Discover',
@@ -113,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         initial={false}
         animate={{
           width: isCollapsed ? 72 : 260,
-          x: isOpen ? 0 : -280,
+          x: isDesktop ? 0 : (isOpen ? 0 : -280),
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className="fixed left-0 top-0 bottom-0 bg-white border-r border-slate-200/80 z-50 flex flex-col lg:translate-x-0 lg:static lg:z-auto"
@@ -224,6 +236,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         <div className="shrink-0 border-t border-slate-100 p-2 space-y-1">
+          {onToggleTerminal && (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={onToggleTerminal}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-3 py-2.5 rounded-xl text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all`}
+              title={isCollapsed ? 'Open Agent Terminal Logs' : undefined}
+            >
+              <Terminal className="w-[18px] h-[18px] text-slate-400" />
+              <AnimatePresence>
+                {!isCollapsed && (
+                  <>
+                    <motion.span
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex-1 text-left"
+                    >
+                      Terminal
+                    </motion.span>
+                    <span className="text-[10px] bg-slate-900 text-emerald-400 font-bold px-1.5 py-0.5 rounded-full font-mono">
+                      {terminalLogsCount}
+                    </span>
+                  </>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          )}
+          
           <button
             onClick={onToggleCollapse}
             className="hidden lg:flex w-full items-center justify-center px-3 py-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
