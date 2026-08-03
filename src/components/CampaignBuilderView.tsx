@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { 
-  Send, 
-  Mail, 
-  Phone, 
-  MessageSquare, 
-  Linkedin, 
-  Copy, 
-  Check, 
-  Sparkles, 
-  RotateCw, 
-  Zap, 
-  Building2, 
+import {
+  Send,
+  Mail,
+  Phone,
+  MessageSquare,
+  Linkedin,
+  Copy,
+  Check,
+  Sparkles,
+  RotateCw,
+  Zap,
+  Building2,
   UserCheck
 } from 'lucide-react';
 import { BusinessLead } from '../types';
+import { api } from '../services/api';
+import { useToast } from './ui/Toast';
 
 interface CampaignBuilderViewProps {
   leads: BusinessLead[];
@@ -31,6 +33,7 @@ export const CampaignBuilderView: React.FC<CampaignBuilderViewProps> = ({
   const [agencyType, setAgencyType] = useState('Website & AI Automation Agency');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   const [campaignData, setCampaignData] = useState<any>({
     leadId: currentLead?.id,
@@ -39,22 +42,18 @@ export const CampaignBuilderView: React.FC<CampaignBuilderViewProps> = ({
     emailBody: `Hi ${currentLead?.ownerName || 'there'},\n\nI was reviewing ${currentLead?.name} on Google in ${currentLead?.city} and noticed your team has stellar reviews (${currentLead?.rating}★ across ${currentLead?.reviewCount} customers!).\n\nHowever, when inspecting your website (${currentLead?.website}) on mobile, I noticed ${currentLead?.audit?.issues?.[0] || 'a slow load speed and missing mobile booking widget'}.\n\nAt our agency, we specialize in helping top-rated ${currentLead?.category} businesses convert existing web visitors into booked clients without paying for more ads. We recently helped a similar clinic increase monthly appointments by 34% with a fast Next.js site + automated AI booking assistant.\n\nWould you be open to a 5-minute video breakdown of how we'd fix this for ${currentLead?.name}?\n\nBest regards,\nLuke\nColdRunners Partner`,
     linkedinPitch: `Hi ${currentLead?.ownerName || 'there'}, loved seeing the great work ${currentLead?.name} is doing in ${currentLead?.city}! Noticed a quick mobile UX bottleneck on your site that might be costing you bookings. Would love to share a free 2-min breakdown!`,
     callScript: `Gatekeeper Script: "Hi! This is Luke calling for ${currentLead?.ownerName || 'the owner'}. I'm calling regarding a technical report we generated for ${currentLead?.name}'s website."\n\nDecision Maker Script: "Hi ${currentLead?.ownerName || 'there'}, I'm calling because we analyzed your website performance against top ${currentLead?.category} competitors in ${currentLead?.city}. Your reviews are top-tier, but your mobile load speed is sitting at ${currentLead?.audit?.loadTimeMs ? (currentLead?.audit?.loadTimeMs / 1000).toFixed(1) + 's' : '4+ seconds'}, which means mobile searchers are bouncing to competitors. We built a quick prototype to show you how to fix it - can I email you the 2-minute video preview?"`,
-    whatsappMessage: `Hello ${currentLead?.ownerName || 'there'}! 👋 Luke here from ColdRunners. Quick heads up regarding ${currentLead?.name}'s website (${currentLead?.website}) - noticed your mobile page speed is losing mobile visitors. Created a short 2-min screen share for you. Mind if I send the link over?`
+    whatsappMessage: `Hello ${currentLead?.ownerName || 'there'}! Luke here from ColdRunners. Quick heads up regarding ${currentLead?.name}'s website (${currentLead?.website}) - noticed your mobile page speed is losing mobile visitors. Created a short 2-min screen share for you. Mind if I send the link over?`
   });
 
   const handleGenerate = async () => {
     if (!currentLead) return;
     setIsGenerating(true);
     try {
-      const res = await fetch('/api/agents/generate-campaign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead: currentLead, agencyType })
-      });
-      const data = await res.json();
+      const data = await api.generateCampaign(currentLead, agencyType);
       setCampaignData(data);
-    } catch (err) {
-      console.error('Error generating campaign:', err);
+      addToast({ type: 'success', title: 'Campaign Generated', message: 'AI-personalized sequence ready' });
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Generation Failed', message: err.message });
     } finally {
       setIsGenerating(false);
     }
@@ -68,7 +67,6 @@ export const CampaignBuilderView: React.FC<CampaignBuilderViewProps> = ({
 
   return (
     <div className="space-y-8 pb-12">
-      {/* Header */}
       <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -85,7 +83,6 @@ export const CampaignBuilderView: React.FC<CampaignBuilderViewProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Side: Target Lead & Agency Config (4 cols) */}
         <div className="lg:col-span-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-4">
           <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">1. Select Target Prospect</span>
 
@@ -142,9 +139,7 @@ export const CampaignBuilderView: React.FC<CampaignBuilderViewProps> = ({
           </button>
         </div>
 
-        {/* Right Side: Multi-channel Sequence Tabs & Content (8 cols) */}
         <div className="lg:col-span-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-4">
-          {/* Tabs */}
           <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
             <button
               onClick={() => setActiveTab('email')}
@@ -184,7 +179,6 @@ export const CampaignBuilderView: React.FC<CampaignBuilderViewProps> = ({
             </button>
           </div>
 
-          {/* Tab Content */}
           {activeTab === 'email' && (
             <div className="space-y-4">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">

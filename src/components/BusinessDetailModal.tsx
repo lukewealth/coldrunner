@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Building2, 
-  Phone, 
-  Mail, 
-  Globe, 
-  MapPin, 
-  Flame, 
-  CheckCircle2, 
-  AlertTriangle, 
-  ShieldCheck, 
-  Send, 
-  Copy, 
+import {
+  X,
+  Building2,
+  Phone,
+  Mail,
+  Globe,
+  MapPin,
+  Flame,
+  CheckCircle2,
+  AlertTriangle,
+  ShieldCheck,
+  Send,
+  Copy,
   ExternalLink,
   Sparkles,
   Zap,
@@ -30,6 +30,8 @@ import {
   Share2
 } from 'lucide-react';
 import { BusinessLead, ActiveTab } from '../types';
+import { api } from '../services/api';
+import { useToast } from './ui/Toast';
 
 interface BusinessDetailModalProps {
   lead: BusinessLead | null;
@@ -45,8 +47,7 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
   initialTab = 'audit'
 }) => {
   const [activeTab, setModalTab] = useState<'audit' | 'overview' | 'pitch' | 'auto-email'>(initialTab);
-  
-  // Auto-Draft Email state
+
   const [emailStyle, setEmailStyle] = useState<string>('Consultative Audit');
   const [draftSubject, setDraftSubject] = useState<string>('');
   const [draftBody, setDraftBody] = useState<string>('');
@@ -54,6 +55,7 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
   const [isGeneratingEmail, setIsGeneratingEmail] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [showPromptPreview, setShowPromptPreview] = useState<boolean>(false);
+  const { addToast } = useToast();
 
   useEffect(() => {
     if (lead && activeTab === 'auto-email' && !draftBody) {
@@ -67,24 +69,11 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
     setIsGeneratingEmail(true);
     setCopied(false);
     try {
-      const res = await fetch('/api/agents/auto-draft-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lead,
-          style
-        })
-      });
-
-      if (!res.ok) throw new Error('Failed to generate auto-draft email');
-
-      const data = await res.json();
+      const data = await api.draftEmail(lead, style);
       setDraftSubject(data.subject || `Growth Opportunity for ${lead.name}`);
       setDraftBody(data.body || '');
       setPromptTemplateUsed(data.promptTemplateUsed || `Gemini Prompt Template targeting ${lead.name}`);
-    } catch (err) {
-      console.error('Error generating email draft:', err);
-      // Fallback
+    } catch (err: any) {
       setDraftSubject(`Quick idea for ${lead.name} (${lead.opportunityScore}% Opp Score)`);
       setDraftBody(
         `Hi ${lead.ownerName || lead.hrContact?.name || 'Team'},\n\nI was looking at ${lead.name}'s digital presence in ${lead.city} and noticed your stellar rating (${lead.rating}★).\n\nHowever, when auditing your website (${lead.website}), we noticed ${lead.audit.issues?.[0] || 'performance bottlenecks'}.\n\nWith an Opportunity Score of ${lead.opportunityScore}/100, upgrading your site could significantly boost mobile conversion.\n\nWould you be open to a 5-minute video walkthrough?\n\nBest regards,\nLuke Okagha`
@@ -107,7 +96,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl ring-1 ring-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-fade-in">
-        {/* Header */}
         <div className="bg-slate-50 p-6 border-b border-slate-200 relative">
           <button
             onClick={onClose}
@@ -164,7 +152,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Quick Contact & Social Handles Bar */}
           <div className="mt-4 pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-700">
             <div className="flex flex-wrap items-center gap-3">
               <span className="flex items-center">
@@ -187,61 +174,30 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
               </a>
             </div>
 
-            {/* Enriched Social Badges */}
             <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
               <span className="text-[10px] text-slate-400 font-bold uppercase mr-1">Socials:</span>
               {lead.socials?.linkedin && (
-                <a
-                  href={`https://${lead.socials.linkedin}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-1 text-sky-700 hover:bg-sky-50 rounded-md transition-colors"
-                  title={`LinkedIn: ${lead.socials.linkedin}`}
-                >
+                <a href={`https://${lead.socials.linkedin}`} target="_blank" rel="noreferrer" className="p-1 text-sky-700 hover:bg-sky-50 rounded-md transition-colors" title={`LinkedIn: ${lead.socials.linkedin}`}>
                   <Linkedin className="w-3.5 h-3.5" />
                 </a>
               )}
               {lead.socials?.instagram && (
-                <a
-                  href={`https://${lead.socials.instagram}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-1 text-pink-600 hover:bg-pink-50 rounded-md transition-colors"
-                  title={`Instagram: ${lead.socials.instagram}`}
-                >
+                <a href={`https://${lead.socials.instagram}`} target="_blank" rel="noreferrer" className="p-1 text-pink-600 hover:bg-pink-50 rounded-md transition-colors" title={`Instagram: ${lead.socials.instagram}`}>
                   <Instagram className="w-3.5 h-3.5" />
                 </a>
               )}
               {lead.socials?.facebook && (
-                <a
-                  href={`https://${lead.socials.facebook}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-1 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                  title={`Facebook: ${lead.socials.facebook}`}
-                >
+                <a href={`https://${lead.socials.facebook}`} target="_blank" rel="noreferrer" className="p-1 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title={`Facebook: ${lead.socials.facebook}`}>
                   <Facebook className="w-3.5 h-3.5" />
                 </a>
               )}
               {lead.socials?.x && (
-                <a
-                  href={`https://${lead.socials.x}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-1 text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
-                  title={`X.com: ${lead.socials.x}`}
-                >
+                <a href={`https://${lead.socials.x}`} target="_blank" rel="noreferrer" className="p-1 text-slate-900 hover:bg-slate-100 rounded-md transition-colors" title={`X.com: ${lead.socials.x}`}>
                   <Twitter className="w-3.5 h-3.5" />
                 </a>
               )}
               {lead.socials?.whatsapp && (
-                <a
-                  href={`https://wa.me/${lead.socials.whatsapp.replace(/[^0-9]/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-                  title={`WhatsApp: ${lead.socials.whatsapp}`}
-                >
+                <a href={`https://wa.me/${lead.socials.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title={`WhatsApp: ${lead.socials.whatsapp}`}>
                   <MessageCircle className="w-3.5 h-3.5" />
                 </a>
               )}
@@ -249,7 +205,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Modal Navigation Tabs */}
         <div className="bg-slate-100 border-b border-slate-200 px-6 py-2 flex items-center space-x-2 overflow-x-auto">
           <button
             onClick={() => setModalTab('audit')}
@@ -289,12 +244,9 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Body Content */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs text-slate-700">
-          {/* TAB 1: WEBSITE & TECH AUDIT */}
           {activeTab === 'audit' && (
             <div className="space-y-6">
-              {/* Score Circles */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Performance</span>
@@ -303,7 +255,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                   </div>
                   <span className="text-[10px] text-slate-500">Load: {(lead.audit.loadTimeMs / 1000).toFixed(1)}s</span>
                 </div>
-
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">SEO Health</span>
                   <div className={`text-2xl font-black ${lead.audit.seo < 60 ? 'text-amber-600' : 'text-emerald-600'}`}>
@@ -311,7 +262,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                   </div>
                   <span className="text-[10px] text-slate-500">Local Maps Rank</span>
                 </div>
-
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Accessibility</span>
                   <div className="text-2xl font-black text-blue-600">
@@ -319,7 +269,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                   </div>
                   <span className="text-[10px] text-slate-500">Mobile Friendly</span>
                 </div>
-
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Security & SSL</span>
                   <div className="text-2xl font-black text-emerald-600 flex items-center justify-center">
@@ -329,7 +278,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Tech Stack */}
               <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2">
                 <span className="text-[11px] font-bold uppercase text-slate-500 block">Detected Technology Stack</span>
                 <div className="flex flex-wrap gap-2">
@@ -341,7 +289,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Issues & Opportunities */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-red-50 border border-red-200 p-4 rounded-2xl space-y-2">
                   <span className="text-red-700 font-bold text-xs flex items-center">
@@ -354,7 +301,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                     ))}
                   </ul>
                 </div>
-
                 <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl space-y-2">
                   <span className="text-emerald-700 font-bold text-xs flex items-center">
                     <CheckCircle2 className="w-4 h-4 mr-1.5" />
@@ -370,10 +316,8 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: OVERVIEW & HR CONTACT */}
           {activeTab === 'overview' && (
             <div className="space-y-5">
-              {/* Company Bio */}
               {lead.companyBio && (
                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-2">
                   <div className="flex items-center space-x-2 text-slate-500 font-bold text-[11px] uppercase tracking-wider">
@@ -386,9 +330,7 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                 </div>
               )}
 
-              {/* HR Contact & Decision Maker Card */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Decision Maker */}
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
                   <div className="flex items-center space-x-2 text-slate-500 font-bold text-[11px] uppercase tracking-wider">
                     <UserCheck className="w-4 h-4 text-emerald-600" />
@@ -410,7 +352,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                   </div>
                 </div>
 
-                {/* HR Contact */}
                 <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 text-emerald-800 font-bold text-[11px] uppercase tracking-wider">
@@ -447,14 +388,12 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Key Financials & Reputation */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
                   <span className="text-[10px] font-semibold uppercase text-slate-400">Estimated Annual Revenue</span>
                   <div className="text-xl font-bold text-slate-900">{lead.estimatedRevenue}</div>
                   <p className="text-[11px] text-slate-500">Based on local sector benchmarks and employee count</p>
                 </div>
-
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
                   <span className="text-[10px] font-semibold uppercase text-slate-400">Google Reviews Reputation</span>
                   <div className="text-xl font-bold text-emerald-600">★ {lead.rating} ({lead.reviewCount} Reviews)</div>
@@ -462,7 +401,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* AI Intelligence Insights */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
                 <span className="text-[10px] font-semibold uppercase text-slate-400 block">AI Intelligence Summary</span>
                 <p className="text-xs text-slate-700 leading-relaxed font-sans">{lead.aiInsights}</p>
@@ -470,14 +408,12 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: PITCH RATIONALE */}
           {activeTab === 'pitch' && (
             <div className="space-y-4">
               <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl space-y-2">
                 <span className="text-emerald-800 font-bold text-xs uppercase block">Recommended Core Service Offer</span>
                 <p className="text-sm font-bold text-slate-900">{lead.recommendedService}</p>
               </div>
-
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
                 <span className="text-slate-500 text-[10px] font-semibold uppercase block">Tailored Agency Pitch Rationale</span>
                 <p className="text-slate-700 text-xs leading-relaxed">
@@ -487,7 +423,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
             </div>
           )}
 
-          {/* TAB 4: GEMINI AUTO-DRAFT EMAIL */}
           {activeTab === 'auto-email' && (
             <div className="space-y-5 animate-fade-in">
               <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -500,8 +435,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                     </p>
                   </div>
                 </div>
-
-                {/* Tone Selectors */}
                 <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-emerald-200">
                   {['Consultative Audit', 'Direct Pitch', 'Short & Punchy'].map((style) => (
                     <button
@@ -520,7 +453,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Email Content Box */}
               {isGeneratingEmail ? (
                 <div className="bg-slate-50 border border-slate-200 p-12 rounded-3xl text-center space-y-3">
                   <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin mx-auto" />
@@ -529,7 +461,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Subject Line */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase block">Email Subject Line</label>
                     <input
@@ -540,7 +471,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                     />
                   </div>
 
-                  {/* Body Textarea */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-bold text-slate-500 uppercase block">Email Body</label>
@@ -554,7 +484,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                     />
                   </div>
 
-                  {/* Actions Bar */}
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                     <button
                       onClick={() => setShowPromptPreview(!showPromptPreview)}
@@ -594,7 +523,6 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Prompt Template Preview Drawer */}
                   {showPromptPreview && (
                     <div className="bg-slate-900 text-slate-300 p-4 rounded-2xl font-mono text-[11px] space-y-2 border border-slate-800 animate-fade-in">
                       <div className="text-emerald-400 font-bold uppercase text-[10px]">Gemini Prompt Context & Metadata:</div>

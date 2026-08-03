@@ -21,6 +21,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Campaign, OutreachAnalytics, BusinessLead } from '../types';
+import { api } from '../services/api';
+import { useToast } from './ui/Toast';
 
 interface CampaignTrackerViewProps {
   leads: BusinessLead[];
@@ -31,7 +33,7 @@ export const CampaignTrackerView: React.FC<CampaignTrackerViewProps> = ({ leads 
   const [analytics, setAnalytics] = useState<OutreachAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetchData();
@@ -39,52 +41,68 @@ export const CampaignTrackerView: React.FC<CampaignTrackerViewProps> = ({ leads 
 
   const fetchData = async () => {
     try {
-      const [campRes, analyticsRes] = await Promise.all([
-        fetch('/api/campaigns'),
-        fetch('/api/outreach/analytics'),
+      const [campData, analyticsData] = await Promise.all([
+        api.getCampaigns(),
+        api.getOutreachAnalytics(),
       ]);
-      const campData = await campRes.json();
-      const analyticsData = await analyticsRes.json();
       setCampaigns(campData.campaigns || []);
       setAnalytics(analyticsData);
-    } catch {}
+    } catch {
+      // silent
+    }
     setLoading(false);
   };
 
   const handleActivate = async (id: string) => {
-    await fetch(`/api/campaigns/${id}/activate`, { method: 'POST' });
-    fetchData();
+    try {
+      await api.activateCampaign(id);
+      addToast({ type: 'success', title: 'Campaign Activated' });
+      fetchData();
+    } catch {
+      addToast({ type: 'error', title: 'Failed to activate campaign' });
+    }
   };
 
   const handlePause = async (id: string) => {
-    await fetch(`/api/campaigns/${id}/pause`, { method: 'POST' });
-    fetchData();
+    try {
+      await api.pauseCampaign(id);
+      addToast({ type: 'info', title: 'Campaign Paused' });
+      fetchData();
+    } catch {
+      addToast({ type: 'error', title: 'Failed to pause campaign' });
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
-    setCampaigns(prev => prev.filter(c => c.id !== id));
+    try {
+      await api.deleteCampaign(id);
+      setCampaigns(prev => prev.filter(c => c.id !== id));
+      addToast({ type: 'info', title: 'Campaign Deleted' });
+    } catch {
+      addToast({ type: 'error', title: 'Failed to delete campaign' });
+    }
   };
 
   const handleCreateCampaign = async () => {
     const hotLeads = leads.filter(l => l.grade === 'HOT').slice(0, 10);
-    if (hotLeads.length === 0) return;
+    if (hotLeads.length === 0) {
+      addToast({ type: 'error', title: 'No HOT leads available' });
+      return;
+    }
 
     try {
-      const res = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: `Campaign ${new Date().toLocaleDateString()}`,
-          leads: hotLeads,
-          channels: ['email'],
-          sequenceSteps: 3,
-        }),
+      await api.createCampaign({
+        name: `Campaign ${new Date().toLocaleDateString()}`,
+        leads: hotLeads,
+        channels: ['email'],
+        sequenceSteps: 3,
       });
-      await res.json();
       setShowCreate(false);
+      addToast({ type: 'success', title: 'Campaign Created', message: `${hotLeads.length} HOT leads added` });
       fetchData();
-    } catch {}
+    } catch {
+      addToast({ type: 'error', title: 'Failed to create campaign' });
+    }
   };
 
   const statusColor = (status: string) => {

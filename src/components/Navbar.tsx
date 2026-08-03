@@ -1,15 +1,14 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { 
-  Bot, 
-  Search, 
-  Building2, 
-  Globe2, 
-  Target, 
-  Send, 
-  BarChart3, 
-  Download, 
-  Settings, 
+import {
+  Bot,
+  Building2,
+  Globe2,
+  Target,
+  Send,
+  BarChart3,
+  Download,
+  Settings,
   Zap,
   Sparkles,
   Layers,
@@ -17,7 +16,6 @@ import {
   Cpu,
   Wifi,
   WifiOff,
-  Activity,
   Mail,
   CheckSquare
 } from 'lucide-react';

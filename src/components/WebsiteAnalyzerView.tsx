@@ -1,47 +1,28 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Globe, 
-  Search, 
-  Sparkles, 
-  CheckCircle2, 
-  AlertTriangle, 
-  ShieldCheck, 
-  RotateCw, 
-  Cpu, 
-  Zap, 
+import {
+  Globe,
+  Search,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  ShieldCheck,
+  RotateCw,
+  Cpu,
+  Zap,
   ArrowRight,
   Copy,
   ExternalLink
 } from 'lucide-react';
 import { Skeleton } from './ui/Skeleton';
+import { api } from '../services/api';
+import { useToast } from './ui/Toast';
 
 export const WebsiteAnalyzerView: React.FC = () => {
   const [url, setUrl] = useState('apexdentaltoronto.ca');
   const [isScanning, setIsScanning] = useState(false);
-  const [auditResult, setAuditResult] = useState<any>({
-    url: 'apexdentaltoronto.ca',
-    performance: 48,
-    seo: 52,
-    accessibility: 60,
-    bestPractices: 65,
-    mobileScore: 42,
-    hasSSL: true,
-    loadTimeMs: 4200,
-    techStack: ['WordPress 5.2', 'jQuery 1.12', 'Apache', 'PHP 7.4'],
-    issues: [
-      'Non-responsive mobile tables cutting off appointment booking',
-      'Lacks online patient intake form (PDF downloads only)',
-      'Slow LCP (Largest Contentful Paint) at 4.2 seconds',
-      'Missing Google Local Schema markup for emergency services'
-    ],
-    opportunities: [
-      'Modern React/Next.js redesign with automated 24/7 online booking widget',
-      'Local SEO optimization for high-ticket implants & Invisalign keywords',
-      'AI WhatsApp booking assistant integration'
-    ],
-    agencyProposalPitch: 'Your current website is built on an outdated WordPress setup with a 4.2s mobile load time, resulting in an estimated 35% bounce rate for mobile searchers. By upgrading to a high-performance Next.js web application with integrated 24/7 AI booking, we expect to double your online inquiry volume within 60 days.'
-  });
+  const [auditResult, setAuditResult] = useState<any>(null);
+  const { addToast } = useToast();
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,15 +30,11 @@ export const WebsiteAnalyzerView: React.FC = () => {
 
     setIsScanning(true);
     try {
-      const res = await fetch('/api/agents/analyze-website', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      });
-      const data = await res.json();
+      const data = await api.analyzeWebsite(url);
       setAuditResult(data);
-    } catch (err) {
-      console.error('Error scanning website:', err);
+      addToast({ type: 'success', title: 'Audit Complete', message: `Analyzed ${url}` });
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Audit Failed', message: err.message || 'Could not analyze website' });
     } finally {
       setIsScanning(false);
     }
@@ -65,7 +42,6 @@ export const WebsiteAnalyzerView: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-12">
-      {/* Header */}
       <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -80,7 +56,6 @@ export const WebsiteAnalyzerView: React.FC = () => {
           </div>
         </div>
 
-        {/* URL Input Form */}
         <form onSubmit={handleScan} className="mt-6 flex flex-col sm:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
             <Globe className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -112,7 +87,6 @@ export const WebsiteAnalyzerView: React.FC = () => {
         </form>
       </div>
 
-      {/* Audit Output View */}
       {isScanning && (
         <div className="space-y-6 animate-fade-in">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -130,7 +104,6 @@ export const WebsiteAnalyzerView: React.FC = () => {
 
       {auditResult && !isScanning && (
         <div className="space-y-6 animate-fade-in">
-          {/* Top Score Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 text-center space-y-1">
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Performance</span>
@@ -165,7 +138,6 @@ export const WebsiteAnalyzerView: React.FC = () => {
             </div>
           </div>
 
-          {/* Tech Stack Fingerprint */}
           <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block flex items-center">
               <Cpu className="w-4 h-4 text-emerald-600 mr-1.5" />
@@ -180,7 +152,6 @@ export const WebsiteAnalyzerView: React.FC = () => {
             </div>
           </div>
 
-          {/* Issues vs Opportunities */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="rounded-3xl bg-red-50/50 border border-red-200 p-6 shadow-sm space-y-3">
               <span className="text-xs font-bold text-red-700 uppercase tracking-wider flex items-center">
@@ -213,7 +184,6 @@ export const WebsiteAnalyzerView: React.FC = () => {
             </div>
           </div>
 
-          {/* Proposal Deck Summary */}
           <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block flex items-center">
               <Sparkles className="w-4 h-4 text-emerald-600 mr-1.5" />

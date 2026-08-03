@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, XCircle, Eye, Mail, MessageSquare, Phone, Clock, Zap, Filter } from 'lucide-react';
 import { OutreachMessage, BusinessLead } from '../types';
+import { api } from '../services/api';
+import { useToast } from './ui/Toast';
 
 interface ApprovalQueueViewProps {
   leads: BusinessLead[];
@@ -12,6 +14,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({ leads }) =
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'email' | 'linkedin' | 'whatsapp'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetchPending();
@@ -19,8 +22,7 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({ leads }) =
 
   const fetchPending = async () => {
     try {
-      const res = await fetch('/api/outreach/pending');
-      const data = await res.json();
+      const data = await api.getPendingMessages();
       setMessages(data.messages || []);
     } catch {
       setMessages([]);
@@ -31,16 +33,22 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({ leads }) =
 
   const handleApprove = async (campaignId: string, messageId: string) => {
     try {
-      await fetch(`/api/campaigns/${campaignId}/messages/${messageId}/approve`, { method: 'POST' });
+      await api.approveMessage(campaignId, messageId);
       setMessages(prev => prev.filter(m => m.id !== messageId));
-    } catch {}
+      addToast({ type: 'success', title: 'Message Approved', message: 'Ready to send' });
+    } catch {
+      addToast({ type: 'error', title: 'Approval Failed' });
+    }
   };
 
   const handleReject = async (campaignId: string, messageId: string) => {
     try {
-      await fetch(`/api/campaigns/${campaignId}/messages/${messageId}/reject`, { method: 'POST' });
+      await api.rejectMessage(campaignId, messageId);
       setMessages(prev => prev.filter(m => m.id !== messageId));
-    } catch {}
+      addToast({ type: 'info', title: 'Message Rejected' });
+    } catch {
+      addToast({ type: 'error', title: 'Rejection Failed' });
+    }
   };
 
   const handleApproveAll = async () => {

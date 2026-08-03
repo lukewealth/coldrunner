@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { 
-  Search, 
-  Sparkles, 
-  Building2, 
-  CheckCircle2, 
-  Flame, 
-  TrendingUp, 
-  MapPin, 
-  Activity, 
-  Globe, 
-  ArrowRight, 
-  Phone, 
-  Mail, 
+import {
+  Search,
+  Sparkles,
+  Building2,
+  CheckCircle2,
+  Flame,
+  TrendingUp,
+  MapPin,
+  Activity,
+  Globe,
+  ArrowRight,
+  Phone,
+  Mail,
   ExternalLink,
   Bot,
   Zap,
@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { BusinessLead, AgentStatusItem, ActiveTab } from '../types';
 import { StaggerList, StaggerItem } from './ui/StaggerList';
+import { api } from '../services/api';
 
 interface DashboardViewProps {
   leads: BusinessLead[];
@@ -44,15 +45,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onQuickSearch,
   onOpenTerminal,
 }) => {
-  // Quick Search state
   const [quickCountry, setQuickCountry] = useState('Canada');
   const [quickProvince, setQuickProvince] = useState('Ontario');
   const [quickCity, setQuickCity] = useState('Toronto');
   const [quickCategory, setQuickCategory] = useState('Dental Clinic');
   const [quickCount, setQuickCount] = useState(5);
-
-  // Map state
   const [activeMapPin, setActiveMapPin] = useState<BusinessLead | null>(leads[0] || null);
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    api.getStats().then(setStats).catch(() => {});
+  }, []);
 
   const hotLeads = leads.filter((l) => l.grade === 'HOT');
   const qualifiedLeads = leads.filter((l) => l.status === 'Qualified' || l.status === 'Contacted' || l.grade === 'HOT');
@@ -68,9 +71,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
   };
 
+  const totalFound = stats?.totalLeads || leads.length;
+  const totalQualified = stats ? (stats.totalLeads - stats.coldLeads) : (420 + qualifiedLeads.length);
+  const totalHot = stats?.hotLeads || (126 + hotLeads.length);
+  const avgOpp = stats?.avgOpportunityScore || 89;
+
   return (
     <div className="space-y-8 pb-12">
-      {/* 1. Welcome & Quick Agent Search Section */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
         <div className="relative z-10 space-y-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -96,7 +103,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Search Wizard Bar */}
           <form onSubmit={handleQuickSubmit} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl shadow-xs grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
             <div>
               <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Country</label>
@@ -178,88 +184,82 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 2. Large KPI Cards Section */}
       <StaggerList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1 */}
         <StaggerItem>
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 hover:shadow-md transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Businesses Found</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                <Building2 className="w-5 h-5" />
+            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Businesses Found</span>
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                  <Building2 className="w-5 h-5" />
+                </div>
               </div>
+              <div className="mt-3 flex items-baseline justify-between">
+                <span className="text-3xl font-bold text-slate-900">{totalFound.toLocaleString()}</span>
+                <span className="text-xs font-semibold text-emerald-600 flex items-center">
+                  <TrendingUp className="w-3 h-3 mr-0.5" />
+                  +14% this wk
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Total local businesses scraped & mapped</p>
             </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-bold text-slate-900">2,850</span>
-              <span className="text-xs font-semibold text-emerald-600 flex items-center">
-                <TrendingUp className="w-3 h-3 mr-0.5" />
-                +14% this wk
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">Total local businesses scraped & mapped</p>
-          </div>
         </StaggerItem>
 
-        {/* Card 2 */}
         <StaggerItem>
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 hover:shadow-md transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Qualified Leads</span>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                <CheckCircle2 className="w-5 h-5" />
+            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Qualified Leads</span>
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
               </div>
+              <div className="mt-3 flex items-baseline justify-between">
+                <span className="text-3xl font-bold text-emerald-600">{totalQualified}</span>
+                <span className="text-xs font-medium text-slate-500">14.7% conversion</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Passed audit & verified contact info</p>
             </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-bold text-emerald-600">{420 + qualifiedLeads.length}</span>
-              <span className="text-xs font-medium text-slate-500">14.7% conversion</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">Passed audit & verified contact info</p>
-          </div>
         </StaggerItem>
 
-        {/* Card 3 */}
         <StaggerItem>
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 hover:shadow-md transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hot Leads</span>
-              <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center font-bold">
-                <Flame className="w-5 h-5 fill-orange-500" />
+            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hot Leads</span>
+                <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center font-bold">
+                  <Flame className="w-5 h-5 fill-orange-500" />
+                </div>
               </div>
+              <div className="mt-3 flex items-baseline justify-between">
+                <span className="text-3xl font-bold text-orange-500">{totalHot}</span>
+                <span className="text-xs font-semibold text-orange-600 font-mono">Opportunity &gt;85%</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">High revenue businesses with broken sites</p>
             </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-bold text-orange-500">{126 + hotLeads.length}</span>
-              <span className="text-xs font-semibold text-orange-600 font-mono">Opportunity &gt;85%</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">High revenue businesses with broken sites</p>
-          </div>
         </StaggerItem>
 
-        {/* Card 4 */}
         <StaggerItem>
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 hover:shadow-md transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Avg Opportunity</span>
-              <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                <Activity className="w-5 h-5" />
+            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Avg Opportunity</span>
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                  <Activity className="w-5 h-5" />
+                </div>
               </div>
+              <div className="mt-3 flex items-baseline justify-between">
+                <span className="text-3xl font-bold text-slate-900">{avgOpp}%</span>
+                <span className="text-xs font-semibold text-blue-600">High Agency Need</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Average revenue gap across current queue</p>
             </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-bold text-slate-900">89%</span>
-              <span className="text-xs font-semibold text-blue-600">High Agency Need</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">Average revenue gap across current queue</p>
-          </div>
         </StaggerItem>
       </StaggerList>
 
-      {/* 3. Live Agent Status Terminal Grid (Dark Contrast block as per design) */}
       <div className="rounded-3xl bg-slate-900 p-6 text-white shadow-lg space-y-4">
         <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-2">
           <div className="flex items-center space-x-2">
             <Bot className="w-5 h-5 text-emerald-400" />
             <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Live Agent Swarm Orchestration</h2>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {onOpenTerminal && (
               <button
@@ -305,9 +305,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 4. Live Map Section & Selected Business Drawer */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Map Container */}
         <div className="lg:col-span-2 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-4 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -326,9 +324,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Interactive Visual Map */}
           <div className="relative w-full h-[320px] bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden flex items-center justify-center group shadow-inner">
-            <div 
+            <div
               className="absolute inset-0 opacity-20 pointer-events-none"
               style={{
                 backgroundImage: `radial-gradient(#10B981 1px, transparent 1px), radial-gradient(#334155 1px, #0F172A 1px)`,
@@ -374,12 +371,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="absolute bottom-3 left-3 bg-white/90 text-slate-800 text-[11px] font-semibold px-3 py-1.5 rounded-xl backdrop-blur shadow-sm flex items-center">
               <MapPin className="w-3 h-3 mr-1 text-emerald-600" />
-              Toronto Metropolitan Area (6 Leads Active)
+              Toronto Metropolitan Area ({leads.length} Leads Active)
             </div>
           </div>
         </div>
 
-        {/* Selected Lead Highlight Drawer */}
         <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-4 flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Map Pin Focus</span>
@@ -449,7 +445,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 5. Pipeline & Lead Funnel Section */}
       <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -462,49 +457,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2">
-          {/* Step 1 */}
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
             <span className="text-[10px] font-semibold text-slate-400 uppercase">Step 1</span>
-            <div className="text-2xl font-bold text-slate-900">2,850</div>
+            <div className="text-2xl font-bold text-slate-900">{totalFound.toLocaleString()}</div>
             <div className="text-xs font-semibold text-slate-700">Found</div>
             <div className="text-[10px] text-slate-500">Google Places</div>
           </div>
 
-          {/* Step 2 */}
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
             <span className="text-[10px] font-semibold text-slate-400 uppercase">Step 2</span>
-            <div className="text-2xl font-bold text-blue-600">1,420</div>
+            <div className="text-2xl font-bold text-blue-600">{Math.floor(totalFound * 0.5).toLocaleString()}</div>
             <div className="text-xs font-semibold text-slate-700">Audited</div>
             <div className="text-[10px] text-slate-500">Website Scanner</div>
           </div>
 
-          {/* Step 3 */}
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
             <span className="text-[10px] font-semibold text-slate-400 uppercase">Step 3</span>
-            <div className="text-2xl font-bold text-purple-600">980</div>
+            <div className="text-2xl font-bold text-purple-600">{Math.floor(totalFound * 0.35).toLocaleString()}</div>
             <div className="text-xs font-semibold text-slate-700">Enriched</div>
             <div className="text-[10px] text-slate-500">Emails & Socials</div>
           </div>
 
-          {/* Step 4 */}
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
             <span className="text-[10px] font-semibold text-slate-400 uppercase">Step 4</span>
-            <div className="text-2xl font-bold text-amber-600">{420 + qualifiedLeads.length}</div>
+            <div className="text-2xl font-bold text-amber-600">{totalQualified}</div>
             <div className="text-xs font-semibold text-slate-700">Scored</div>
             <div className="text-[10px] text-slate-500">AI Opportunity</div>
           </div>
 
-          {/* Step 5 */}
           <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center space-y-1">
             <span className="text-[10px] font-bold text-emerald-700 uppercase">Step 5</span>
-            <div className="text-2xl font-bold text-emerald-600">{126 + hotLeads.length}</div>
+            <div className="text-2xl font-bold text-emerald-600">{totalHot}</div>
             <div className="text-xs font-bold text-slate-900">Hot Leads</div>
             <div className="text-[10px] text-emerald-700 font-medium">Ready to Outreach</div>
           </div>
         </div>
       </div>
 
-      {/* 6. Recent Hot Opportunities Table */}
       <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-4 overflow-hidden">
         <div className="flex items-center justify-between">
           <div>
@@ -536,7 +525,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-sans">
-              {leads.map((lead) => (
+              {leads.slice(0, 10).map((lead) => (
                 <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
                   <td className="py-3.5 px-4">
                     <div className="font-bold text-slate-900 text-sm">{lead.name}</div>

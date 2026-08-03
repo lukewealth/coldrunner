@@ -1,9 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <circle cx="32" cy="32" r="8" fill="#3B82F6"/>
-  <circle cx="32" cy="12" r="4" fill="#3B82F6"/>
-  <circle cx="49" cy="42" r="4" fill="#3B82F6"/>
-  <circle cx="15" cy="42" r="4" fill="#3B82F6"/>
-  <path d="M37 14.5A19 19 0 0 1 47 39.5" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
-  <path d="M47 44.5A19 19 0 0 1 17 44.5" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
-  <path d="M17 39.5A19 19 0 0 1 27 14.5" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a56db"/>
+      <stop offset="100%" style="stop-color:#00bfff"/>
+    </linearGradient>
+    <linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a56db"/>
+      <stop offset="100%" style="stop-color:#00d4ff"/>
+    </linearGradient>
+  </defs>
+  <path d="M42 14C34 14 28 20 28 28C28 22 24 18 18 18L12 18C10 18 10 22 12 22L18 22C22 22 24 24 24 28C24 24 20 22 16 22L10 22C8 22 8 26 10 26L16 26C20 26 24 28 24 32C24 40 30 46 38 46C44 46 48 42 48 38C48 42 44 44 40 44C34 44 30 40 30 34C30 26 34 20 40 20C44 20 46 22 46 26C46 22 44 18 40 16C38 15 36 14 42 14Z" fill="url(#cg)"/>
+  <path d="M44 16C36 16 30 22 30 30C30 38 36 44 44 44C48 44 50 42 50 38C50 42 48 42 44 42C38 42 34 36 34 30C34 24 38 18 44 18C48 18 50 20 50 24C50 20 48 16 44 16Z" fill="url(#cg)"/>
+  <rect x="8" y="26" width="14" height="4" rx="2" fill="url(#sg)"/>
+  <rect x="8" y="34" width="10" height="4" rx="2" fill="url(#sg)"/>
+  <circle cx="18" cy="20" r="2.5" fill="url(#sg)"/>
+  <circle cx="18" cy="44" r="2.5" fill="url(#sg)"/>
+  <path d="M36 28L37.5 32L41.5 33.5L37.5 35L36 39L34.5 35L30.5 33.5L34.5 32L36 28Z" fill="url(#sg)"/>
 </svg>

@@ -45,6 +45,22 @@ function AppContent() {
     api.health()
       .then(() => setApiHealth('ok'))
       .catch(() => setApiHealth('offline'));
+
+    api.getLeads({ limit: '100' })
+      .then((data) => {
+        if (data.leads && data.leads.length > 0) {
+          setLeads(data.leads);
+        }
+      })
+      .catch(() => {});
+
+    api.getAgentsStatus()
+      .then((data) => {
+        if (data.agents && data.agents.length > 0) {
+          setAgents(data.agents);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleAddLog = useCallback((log: TerminalLog) => {

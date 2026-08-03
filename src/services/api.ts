@@ -1,4 +1,4 @@
-import { BusinessLead, SearchFilterCriteria } from '../types';
+import { BusinessLead, SearchFilterCriteria, Campaign, OutreachMessage, OutreachAnalytics, WebhookSubscription, OutreachEvent } from '../types';
 
 const BASE = '';
 
@@ -18,8 +18,11 @@ export const api = {
   health: () =>
     request<{ status: string; timestamp: string; plugins: string[]; agents: { name: string; status: string }[] }>('/api/health'),
 
+  doctor: (format?: string) =>
+    request<any>(`/api/doctor${format ? `?format=${format}` : ''}`),
+
   runSearch: (criteria: SearchFilterCriteria) =>
-    request<{ leads: BusinessLead[]; source: string; workflowId?: string }>('/api/agents/run-search', {
+    request<{ leads: BusinessLead[]; source: string; workflowId?: string; logCount?: number }>('/api/agents/run-search', {
       method: 'POST',
       body: JSON.stringify(criteria),
     }),
@@ -96,6 +99,14 @@ export const api = {
       body: JSON.stringify({ format, leadIds }),
     }),
 
+  exportPreview: (format?: string, limit?: number) => {
+    const params = new URLSearchParams();
+    if (format) params.set('format', format);
+    if (limit) params.set('limit', String(limit));
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return request<any>(`/api/export/preview${qs}`);
+  },
+
   syncCrm: (crmId: string, leads: BusinessLead[]) =>
     request<any>('/api/crm/sync', {
       method: 'POST',
@@ -131,4 +142,116 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(settings),
     }),
+
+  getAnalyticsOverview: () =>
+    request<any>('/api/analytics/overview'),
+
+  getEvents: (params?: { type?: string; leadId?: string; limit?: number }) => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+    return request<{ events: OutreachEvent[]; total: number }>(`/api/events${qs}`);
+  },
+
+  getEventCounts: () =>
+    request<{ counts: Record<string, number> }>('/api/events/counts'),
+
+  getWebhooks: () =>
+    request<{ subscriptions: WebhookSubscription[] }>('/api/webhooks'),
+
+  createWebhook: (data: { url: string; events: string[]; platform?: string }) =>
+    request<WebhookSubscription>('/api/webhooks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateWebhook: (id: string, updates: any) =>
+    request<WebhookSubscription>(`/api/webhooks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+  deleteWebhook: (id: string) =>
+    request<{ success: boolean }>(`/api/webhooks/${id}`, { method: 'DELETE' }),
+
+  testWebhook: (id: string) =>
+    request<any>(`/api/webhooks/${id}/test`, { method: 'POST' }),
+
+  getWebhookDeliveries: (limit?: number) => {
+    const qs = limit ? `?limit=${limit}` : '';
+    return request<any>(`/api/webhooks/deliveries${qs}`);
+  },
+
+  generateOutreachMessage: (lead: BusinessLead, channel?: string, agencyType?: string) =>
+    request<any>('/api/outreach/generate', {
+      method: 'POST',
+      body: JSON.stringify({ lead, channel, agencyType }),
+    }),
+
+  generateOutreachSequence: (lead: BusinessLead, channel?: string, steps?: number) =>
+    request<{ messages: OutreachMessage[] }>('/api/outreach/generate-sequence', {
+      method: 'POST',
+      body: JSON.stringify({ lead, channel, steps }),
+    }),
+
+  getPendingMessages: () =>
+    request<{ messages: OutreachMessage[]; total: number }>('/api/outreach/pending'),
+
+  getOutreachAnalytics: () =>
+    request<OutreachAnalytics>('/api/outreach/analytics'),
+
+  getCampaigns: () =>
+    request<{ campaigns: Campaign[] }>('/api/campaigns'),
+
+  getCampaign: (id: string) =>
+    request<Campaign>(`/api/campaigns/${id}`),
+
+  createCampaign: (data: { name: string; leads: BusinessLead[]; channels?: string[]; sequenceSteps?: number; criteria?: any }) =>
+    request<Campaign>('/api/campaigns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  activateCampaign: (id: string) =>
+    request<Campaign>(`/api/campaigns/${id}/activate`, { method: 'POST' }),
+
+  pauseCampaign: (id: string) =>
+    request<Campaign>(`/api/campaigns/${id}/pause`, { method: 'POST' }),
+
+  deleteCampaign: (id: string) =>
+    request<{ success: boolean }>(`/api/campaigns/${id}`, { method: 'DELETE' }),
+
+  getCampaignPendingMessages: (id: string) =>
+    request<{ messages: OutreachMessage[] }>(`/api/campaigns/${id}/pending`),
+
+  approveMessage: (campaignId: string, messageId: string) =>
+    request<OutreachMessage>(`/api/campaigns/${campaignId}/messages/${messageId}/approve`, { method: 'POST' }),
+
+  rejectMessage: (campaignId: string, messageId: string) =>
+    request<OutreachMessage>(`/api/campaigns/${campaignId}/messages/${messageId}/reject`, { method: 'POST' }),
+
+  recordMeeting: (campaignId: string, leadId: string) =>
+    request<{ success: boolean }>(`/api/campaigns/${campaignId}/meeting`, {
+      method: 'POST',
+      body: JSON.stringify({ leadId }),
+    }),
+
+  recordReply: (campaignId: string, leadId: string, positive?: boolean) =>
+    request<{ success: boolean }>(`/api/campaigns/${campaignId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ leadId, positive }),
+    }),
+
+  getMcpTools: () =>
+    request<{ tools: any[] }>('/api/mcp/tools'),
+
+  executeMcpTool: (toolName: string, params?: any) =>
+    request<any>(`/api/mcp/tools/${toolName}`, {
+      method: 'POST',
+      body: JSON.stringify(params || {}),
+    }),
+
+  getMcpResources: () =>
+    request<{ resources: any[] }>('/api/mcp/resources'),
+
+  getMcpResource: (uri: string) =>
+    request<any>(`/api/mcp/resources/${encodeURIComponent(uri)}`),
 };
