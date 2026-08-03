@@ -31,7 +31,7 @@ export class PageSpeedPlugin extends BasePlugin {
       psiUrl.searchParams.set('category', 'best-practices');
       psiUrl.searchParams.set('category', 'seo');
 
-      const response = await fetch(psiUrl.toString());
+      const response = await this.fetchWithRetry(psiUrl.toString());
       const data = await response.json();
 
       if (!data.lighthouseResult) {

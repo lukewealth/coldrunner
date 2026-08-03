@@ -26,6 +26,20 @@ export const config = {
     retryAttempts: parseInt(process.env.AGENT_RETRY_ATTEMPTS || '3', 10),
   },
 
+  retry: {
+    maxAttempts: parseInt(process.env.RETRY_MAX_ATTEMPTS || '3', 10),
+    baseDelayMs: parseInt(process.env.RETRY_BASE_DELAY_MS || '1000', 10),
+    maxDelayMs: parseInt(process.env.RETRY_MAX_DELAY_MS || '30000', 10),
+  },
+
+  cache: {
+    enabled: process.env.CACHE_ENABLED !== 'false',
+    defaultTtlMs: parseInt(process.env.CACHE_TTL_MS || '1800000', 10),
+    maxEntries: parseInt(process.env.CACHE_MAX_ENTRIES || '5000', 10),
+    persistToDisk: process.env.CACHE_PERSIST !== 'false',
+    persistPath: process.env.CACHE_PATH || './data/cache.json',
+  },
+
   search: {
     defaultRadius: 25,
     defaultTargetCount: 300,

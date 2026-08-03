@@ -15,6 +15,7 @@ import { eventBus } from './src/server/services/event-bus';
 import { webhookService } from './src/server/services/webhooks';
 import { outreachService } from './src/server/services/outreach';
 import { campaignService } from './src/server/services/campaigns';
+import { doctorService } from './src/server/services/doctor';
 import { SearchCriteria, BusinessLead, WorkflowLog } from './src/server/types';
 
 dotenv.config();
@@ -57,6 +58,22 @@ async function startServer() {
       plugins: pluginRegistry.getNames(),
       agents: masterPlanner.getStatus().map((a) => ({ name: a.name, status: a.status })),
     });
+  });
+
+  // ==================== DOCTOR ====================
+  app.get('/api/doctor', async (req, res) => {
+    try {
+      const report = await doctorService.diagnose();
+      const format = req.query.format as string;
+
+      if (format === 'text') {
+        res.type('text/plain').send(doctorService.formatReport(report));
+      } else {
+        res.json(report);
+      }
+    } catch (err: any) {
+      res.status(500).json({ error: 'Doctor check failed', details: err.message });
+    }
   });
 
   // ==================== AGENT SEARCH (Full Workflow) ====================

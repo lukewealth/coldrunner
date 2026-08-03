@@ -47,7 +47,7 @@ export class WebsiteAnalyzerAgent implements Agent {
       processed++;
     }
 
-    const batchSize = 5;
+    const batchSize = 10;
     for (let i = 0; i < leadsWithWebsites.length; i += batchSize) {
       const batch = leadsWithWebsites.slice(i, i + batchSize);
       

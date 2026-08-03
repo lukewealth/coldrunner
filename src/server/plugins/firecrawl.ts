@@ -87,7 +87,7 @@ export class FirecrawlPlugin extends BasePlugin {
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
-      const response = await fetch(`${this.baseUrl}/scrape`, {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/scrape`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +132,7 @@ export class FirecrawlPlugin extends BasePlugin {
       psiUrl.searchParams.set('category', 'seo');
       psiUrl.searchParams.set('strategy', 'mobile');
 
-      const response = await fetch(psiUrl.toString());
+      const response = await this.fetchWithRetry(psiUrl.toString());
       const data = await response.json();
       return data.lighthouseResult?.categories || null;
     } catch {

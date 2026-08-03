@@ -43,7 +43,7 @@ export class HunterPlugin extends BasePlugin {
       url.searchParams.set('domain', domain.replace(/^https?:\/\//, '').replace(/\/.*$/, ''));
       url.searchParams.set('api_key', this.apiKey);
 
-      const response = await fetch(url.toString());
+      const response = await this.fetchWithRetry(url.toString());
       const data = await response.json();
 
       if (data.errors) {
@@ -132,7 +132,7 @@ export class ApolloPlugin extends BasePlugin {
     }
 
     try {
-      const response = await fetch('https://api.apollo.io/v1/mixed_people/search', {
+      const response = await this.fetchWithRetry('https://api.apollo.io/v1/mixed_people/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

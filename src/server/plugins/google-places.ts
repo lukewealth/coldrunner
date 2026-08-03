@@ -76,7 +76,7 @@ export class GooglePlacesPlugin extends BasePlugin {
     url.searchParams.set('key', this.apiKey);
     if (params.language) url.searchParams.set('language', params.language);
 
-    const response = await fetch(url.toString());
+    const response = await this.fetchWithRetry(url.toString());
     const data = await response.json();
 
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
@@ -103,7 +103,7 @@ export class GooglePlacesPlugin extends BasePlugin {
     url.searchParams.set('fields', 'place_id,name,formatted_address,geometry,formatted_phone_number,website,rating,user_ratings_total,types,business_status,opening_hours,photos,url');
     url.searchParams.set('key', this.apiKey);
 
-    const response = await fetch(url.toString());
+    const response = await this.fetchWithRetry(url.toString());
     const data = await response.json();
 
     if (data.status !== 'OK' || !data.result) return null;
@@ -147,7 +147,7 @@ export class GooglePlacesPlugin extends BasePlugin {
       if (radius) url.searchParams.set('radius', String(radius * 1000));
       url.searchParams.set('key', this.apiKey);
 
-      const response = await fetch(url.toString());
+      const response = await this.fetchWithRetry(url.toString());
       const data = await response.json();
 
       const results = (data.results || []).map((r: any) => ({
@@ -197,7 +197,7 @@ export class GooglePlacesPlugin extends BasePlugin {
       url.searchParams.set('address', address);
       url.searchParams.set('key', this.apiKey);
 
-      const response = await fetch(url.toString());
+      const response = await this.fetchWithRetry(url.toString());
       const data = await response.json();
 
       if (data.status !== 'OK' || !data.results?.[0]) {

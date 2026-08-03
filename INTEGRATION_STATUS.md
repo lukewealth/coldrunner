@@ -193,5 +193,35 @@ The ColdRunners Business Intelligence Platform is fully operational with:
 - ✓ Autonomous workflow engine
 - ✓ Build passing, no errors
 
-**Total Code:** 3,329 lines of TypeScript + React components
+## Resilience Layer ✓
+
+**Retry/Backoff:**
+- Exponential backoff with jitter on all API calls (Google Places, Firecrawl, Hunter.io, Apollo.io, PageSpeed)
+- Configurable max attempts, base delay, max delay via env vars
+- Detects retryable errors: 429, 5xx, timeout, network failures
+- `fetchWithRetry()` method on BasePlugin used by all plugins
+
+**Caching:**
+- In-memory cache with TTL, max entries, LRU eviction
+- Disk persistence to `./data/cache.json` with periodic flush
+- Plugin registry caches successful results automatically
+- Configurable via `CACHE_ENABLED`, `CACHE_TTL_MS`, `CACHE_MAX_ENTRIES`, `CACHE_PERSIST`, `CACHE_PATH`
+
+**Parallel Processing:**
+- Contact discovery: Hunter + Apollo + Social calls run concurrently per lead (batch of 5)
+- Website analyzer: batch size 10 concurrent Firecrawl scrapes
+
+**Workflow State Persistence:**
+- State saved to `./data/workflow-state.json` at every log and progress update
+- Master planner reports step progress (1-6) with partial leads after each phase
+- `getResumeData()` method recovers criteria + partial leads after crash
+
+**Health Diagnostics (Doctor):**
+- `GET /api/doctor` — full system health report (JSON or text format)
+- Channel manager with backend routing and fallback (inspired by Agent-Reach)
+- Web scraping: Firecrawl → Jina Reader fallback
+- Tiered diagnostics: core (zero-config), optional (needs API key), advanced
+- Reports: plugin status, channel status, cache stats, retry config
+
+**Total Code:** 3,329+ lines of TypeScript + React components
 **Status:** Production-ready (pending additional API keys for full functionality)

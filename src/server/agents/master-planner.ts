@@ -41,7 +41,11 @@ export class MasterPlannerAgent {
     }
   }
 
-  async execute(criteria: SearchCriteria, onLog: (log: Omit<WorkflowLog, 'id' | 'timestamp'>) => void): Promise<BusinessLead[]> {
+  async execute(
+    criteria: SearchCriteria,
+    onLog: (log: Omit<WorkflowLog, 'id' | 'timestamp'>) => void,
+    onProgress?: (step: number, totalSteps: number, partialLeads: BusinessLead[]) => void,
+  ): Promise<BusinessLead[]> {
     const context: any = {
       taskId: `workflow-${Date.now()}`,
       criteria,
@@ -73,6 +77,7 @@ export class MasterPlannerAgent {
 
       context.onLog({ agent: this.name, level: 'success', message: `Phase 1 complete: ${context.leads.length} businesses discovered via Google Places API` });
       this.updateStatus('ag-gp', 'completed', `Discovered ${discoveryResult.itemsProcessed} businesses`, discoveryResult.itemsProcessed);
+      onProgress?.(1, 6, [...context.leads]);
 
       for (const lead of context.leads) {
         await eventBus.emit('business.discovered', {
@@ -89,6 +94,7 @@ export class MasterPlannerAgent {
       const websiteResult = await this.agents.websiteAnalyzer.execute(context);
       context.onLog({ agent: this.name, level: 'success', message: `Phase 2 complete: Website analysis for ${websiteResult.itemsProcessed} businesses` });
       this.updateStatus('ag-wa', 'completed', `Analyzed ${websiteResult.itemsProcessed} websites`, websiteResult.itemsProcessed);
+      onProgress?.(2, 6, [...context.leads]);
 
       for (const lead of context.leads) {
         await eventBus.emit('website.analyzed', {
@@ -104,6 +110,7 @@ export class MasterPlannerAgent {
       const contactResult = await this.agents.contactDiscovery.execute(context);
       context.onLog({ agent: this.name, level: 'success', message: `Phase 3 complete: Contact enrichment for ${contactResult.itemsProcessed} businesses` });
       this.updateStatus('ag-cd', 'completed', `Enriched ${contactResult.itemsProcessed} contacts`, contactResult.itemsProcessed);
+      onProgress?.(3, 6, [...context.leads]);
 
       for (const lead of context.leads) {
         await eventBus.emit('contact.enriched', {
@@ -119,6 +126,7 @@ export class MasterPlannerAgent {
       const scoringResult = await this.agents.opportunityScorer.execute(context);
       context.onLog({ agent: this.name, level: 'success', message: `Phase 4 complete: Opportunity scoring for ${scoringResult.itemsProcessed} leads` });
       this.updateStatus('ag-os', 'completed', `Scored ${scoringResult.itemsProcessed} leads`, scoringResult.itemsProcessed);
+      onProgress?.(4, 6, [...context.leads]);
 
       for (const lead of context.leads) {
         await eventBus.emit('opportunity.scored', {
@@ -137,6 +145,7 @@ export class MasterPlannerAgent {
       });
 
       context.onLog({ agent: this.name, level: 'info', message: `Filtered to ${filteredLeads.length} leads meeting minimum criteria (Rating >= ${criteria.minRating}, Reviews >= ${criteria.minReviews}, Score >= ${criteria.minOpportunityScore})` });
+      onProgress?.(5, 6, [...filteredLeads]);
 
       for (const lead of filteredLeads) {
         await eventBus.emit('business.qualified', {
@@ -156,6 +165,7 @@ export class MasterPlannerAgent {
       const dedupResult = await this.agents.duplicateDetector.execute(context);
       filteredLeads = dedupResult.leads || filteredLeads;
       this.updateStatus('ag-dd', 'completed', `Deduplicated to ${filteredLeads.length} unique leads`, dedupResult.itemsProcessed);
+      onProgress?.(6, 6, [...filteredLeads]);
 
       // Step 7: Trim to target count
       const finalLeads = filteredLeads.slice(0, criteria.targetCount);
