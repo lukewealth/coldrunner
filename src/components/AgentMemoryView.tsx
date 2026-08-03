@@ -23,10 +23,6 @@ import {
   Sliders
 } from 'lucide-react';
 
-interface AgentMemoryViewProps {
-  onOpenTerminal?: () => void;
-}
-
 interface SwarmAgentMemory {
   id: string;
   name: string;
@@ -39,7 +35,7 @@ interface SwarmAgentMemory {
   lastUpdated: string;
 }
 
-export const AgentMemoryView: React.FC<AgentMemoryViewProps> = ({ onOpenTerminal }) => {
+export const AgentMemoryView: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'memory' | 'mcp' | 'skills' | 'docs'>('memory');
   const [copiedDoc, setCopiedDoc] = useState(false);
 
@@ -158,15 +154,6 @@ ColdRunners AI Business Intelligence Finder operates an autonomous multi-agent s
               <Server className="w-3.5 h-3.5 text-emerald-400" />
               <span>MCP Bridge Active</span>
             </span>
-            {onOpenTerminal && (
-              <button
-                onClick={onOpenTerminal}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl flex items-center space-x-1 cursor-pointer transition-all shadow-sm"
-              >
-                <Terminal className="w-3.5 h-3.5" />
-                <span>Live Logs</span>
-              </button>
-            )}
           </div>
         </div>
       </div>

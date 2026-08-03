@@ -27,6 +27,80 @@ export const api = {
       body: JSON.stringify(criteria),
     }),
 
+  runSearchStream: (
+    criteria: SearchFilterCriteria,
+    onLog: (log: any) => void,
+    onProgress: (data: { step: string; percent: number }) => void,
+    onLead: (lead: BusinessLead) => void,
+    onComplete: (data: any) => void,
+    onError?: (error: any) => void,
+  ): AbortController => {
+    const controller = new AbortController();
+
+    fetch('/api/agents/run-search-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(criteria),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response body');
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          let currentEvent = '';
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              currentEvent = line.slice(7).trim();
+            } else if (line.startsWith('data: ') && currentEvent) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                switch (currentEvent) {
+                  case 'log':
+                    onLog(data);
+                    break;
+                  case 'progress':
+                    onProgress(data);
+                    break;
+                  case 'lead':
+                    onLead(data);
+                    break;
+                  case 'complete':
+                    onComplete(data);
+                    break;
+                  case 'error':
+                    onError?.(data);
+                    break;
+                }
+              } catch {}
+              currentEvent = '';
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          onError?.({ message: err.message });
+        }
+      });
+
+    return controller;
+  },
+
   analyzeWebsite: (url: string) =>
     request<any>('/api/agents/analyze-website', {
       method: 'POST',

@@ -15,24 +15,22 @@ import {
   MapPin, 
   Flame, 
   ArrowRight,
-  Filter
+  Filter,
+  Loader2
 } from 'lucide-react';
 import { BusinessLead, SearchFilterCriteria, TerminalLog, ActiveTab } from '../types';
+import { api } from '../services/api';
 
 interface SearchWizardViewProps {
   onExecuteSearch: (criteria: SearchFilterCriteria) => Promise<BusinessLead[]>;
   setActiveTab: (tab: ActiveTab) => void;
   setSelectedLead: (lead: BusinessLead) => void;
-  onOpenTerminal?: () => void;
-  onAddGlobalLog?: (log: TerminalLog) => void;
 }
 
 export const SearchWizardView: React.FC<SearchWizardViewProps> = ({
   onExecuteSearch,
   setActiveTab,
   setSelectedLead,
-  onOpenTerminal,
-  onAddGlobalLog
 }) => {
   const [criteria, setCriteria] = useState<SearchFilterCriteria>({
     country: 'Canada',
@@ -61,6 +59,7 @@ export const SearchWizardView: React.FC<SearchWizardViewProps> = ({
   const [currentStep, setCurrentStep] = useState<string>('Idle');
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [discoveredLeads, setDiscoveredLeads] = useState<BusinessLead[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
@@ -68,9 +67,6 @@ export const SearchWizardView: React.FC<SearchWizardViewProps> = ({
     const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
     const logObj: TerminalLog = { id: `log-${Date.now()}-${Math.random()}`, timestamp: timeStr, agent, level, message };
     setLogs((prev) => [...prev, logObj]);
-    if (onAddGlobalLog) {
-      onAddGlobalLog(logObj);
-    }
   };
 
   useEffect(() => {
@@ -91,45 +87,49 @@ export const SearchWizardView: React.FC<SearchWizardViewProps> = ({
     if (isSearching) return;
 
     setIsSearching(true);
-    setProgressPercent(10);
-    setCurrentStep('Google Places Search');
+    setProgressPercent(0);
+    setCurrentStep('Initializing');
     setDiscoveredLeads([]);
 
-    addLog('Master Planner', 'info', `Targeting ${criteria.category} in ${criteria.city}, ${criteria.province} (${criteria.country})`);
-    if (criteria.aiPromptQuery) {
-      addLog('Agentic Prompt Parser', 'info', `AI Search Target Prompt: "${criteria.aiPromptQuery}"`);
-    }
-    addLog('Google Places Agent', 'info', `Scanning radius of ${criteria.radiusKm}km around ${criteria.city}... Goal: ${criteria.searchPurpose}`);
+    const controller = api.runSearchStream(
+      criteria,
+      (log) => {
+        const timeStr = new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false });
+        const logObj: TerminalLog = {
+          id: log.id,
+          timestamp: timeStr,
+          agent: log.agent,
+          level: log.level,
+          message: log.message,
+        };
+        setLogs((prev) => [...prev, logObj]);
+      },
+      (progress) => {
+        setCurrentStep(progress.step);
+        setProgressPercent(progress.percent);
+      },
+      (lead) => {
+        setDiscoveredLeads((prev) => [...prev, lead]);
+      },
+      (complete) => {
+        setIsSearching(false);
+        addLog('Master Planner', 'success', `Stream complete: ${complete.totalLeads} leads discovered`);
+      },
+      (error) => {
+        setIsSearching(false);
+        addLog('Master Planner', 'error', `Stream error: ${error.message}`);
+      }
+    );
 
-    try {
-      await new Promise((r) => setTimeout(r, 600));
-      setProgressPercent(30);
-      setCurrentStep('Website Audit & Firecrawl');
-      addLog('Google Places Agent', 'success', `Located match candidates. Handing off to Scraper & PageSpeed Worker.`);
-      addLog('Website Analyzer', 'info', `Initiating headless Lighthouse audit & tech stack fingerprinting (${criteria.techStackFilter})...`);
+    abortControllerRef.current = controller;
+  };
 
-      await new Promise((r) => setTimeout(r, 800));
-      setProgressPercent(60);
-      setCurrentStep('Email & Contact Enrichment');
-      addLog('Website Analyzer', 'success', `Parsed page load times, SSL certificates, and responsive viewport metrics.`);
-      addLog('Email Discovery Agent', 'info', `Extracting decision maker contacts (${criteria.targetJobTitle}) & HR emails...`);
-
-      await new Promise((r) => setTimeout(r, 700));
-      setProgressPercent(85);
-      setCurrentStep('AI Opportunity Scoring');
-      addLog('Opportunity Scoring Agent', 'info', `Executing Gemini 3.6 Flash reasoning model to calculate agency opportunity score & pitch recommendations...`);
-
-      // Execute actual API call
-      const results = await onExecuteSearch(criteria);
-
-      setProgressPercent(100);
-      setCurrentStep('Complete');
-      addLog('Master Planner', 'success', `Successfully discovered & enriched ${results.length} qualified business lead prospects!`);
-      setDiscoveredLeads(results);
-    } catch (err: any) {
-      addLog('Master Planner', 'error', `Search error: ${err.message || 'Unknown server error'}`);
-    } finally {
+  const handleCancelSearch = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
       setIsSearching(false);
+      addLog('Master Planner', 'warning', 'Search cancelled by user');
     }
   };
 
@@ -388,27 +388,39 @@ export const SearchWizardView: React.FC<SearchWizardViewProps> = ({
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={isSearching}
-              className={`w-full font-bold py-3.5 px-4 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-lg shadow-emerald-200 active:scale-98 ${
-                isSearching
-                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
-                  : 'bg-emerald-500 hover:bg-emerald-600 text-white'
-              }`}
-            >
-              {isSearching ? (
-                <>
-                  <RotateCw className="w-4 h-4 animate-spin text-slate-500" />
-                  <span>Agent Execution in Progress...</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4 fill-white text-white" />
-                  <span>Launch Autonomous Research Agent</span>
-                </>
+            <div className="space-y-2">
+              <button
+                type="submit"
+                disabled={isSearching}
+                className={`w-full font-bold py-3.5 px-4 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-lg shadow-emerald-200 active:scale-98 ${
+                  isSearching
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
+                    : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                }`}
+              >
+                {isSearching ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                    <span>Agent Execution in Progress...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 fill-white text-white" />
+                    <span>Launch Autonomous Research Agent</span>
+                  </>
+                )}
+              </button>
+
+              {isSearching && (
+                <button
+                  type="button"
+                  onClick={handleCancelSearch}
+                  className="w-full font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer bg-red-50 hover:bg-red-100 text-red-600 border border-red-200"
+                >
+                  <span>Cancel Search</span>
+                </button>
               )}
-            </button>
+            </div>
           </form>
         </div>
 
@@ -422,15 +434,6 @@ export const SearchWizardView: React.FC<SearchWizardViewProps> = ({
                 <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Live Agent Terminal View</h2>
               </div>
               <div className="flex items-center space-x-3">
-                {onOpenTerminal && (
-                  <button
-                    onClick={onOpenTerminal}
-                    className="text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-xl font-semibold flex items-center space-x-1 cursor-pointer transition-colors"
-                  >
-                    <Terminal className="w-3.5 h-3.5" />
-                    <span>Expand Overlay</span>
-                  </button>
-                )}
                 <span className="text-xs font-semibold text-slate-500">
                   Status: <span className="text-emerald-600 font-bold">{currentStep}</span>
                 </span>

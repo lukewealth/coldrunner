@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { TopNav } from './components/TopNav';
 import { Sidebar } from './components/Sidebar';
@@ -13,7 +13,6 @@ import { ReportsView } from './components/ReportsView';
 import { ExportCenterView } from './components/ExportCenterView';
 import { SettingsView } from './components/SettingsView';
 import { AgentMemoryView } from './components/AgentMemoryView';
-import { TerminalLogsOverlay } from './components/TerminalLogsOverlay';
 import { ApprovalQueueView } from './components/ApprovalQueueView';
 import { CampaignTrackerView } from './components/CampaignTrackerView';
 import { NotificationsPanel } from './components/NotificationsPanel';
@@ -26,16 +25,13 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PageTransition } from './components/ui/PageTransition';
 import { SkeletonDashboard } from './components/ui/Skeleton';
 import { INITIAL_LEADS, INITIAL_AGENTS } from './data/mockLeads';
-import { INITIAL_TERMINAL_LOGS } from './data/initialLogs';
-import { BusinessLead, AgentStatusItem, SearchFilterCriteria, ActiveTab, LeadStatus, TerminalLog } from './types';
+import { BusinessLead, AgentStatusItem, SearchFilterCriteria, ActiveTab, LeadStatus } from './types';
 import { api } from './services/api';
 import { useSSE } from './services/useSSE';
 
 function AppContent() {
   const [leads, setLeads] = useState<BusinessLead[]>(INITIAL_LEADS);
   const [agents, setAgents] = useState<AgentStatusItem[]>(INITIAL_AGENTS);
-  const [terminalLogs, setTerminalLogs] = useState<TerminalLog[]>(INITIAL_TERMINAL_LOGS);
-  const [isTerminalOpen, setIsTerminalOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedLead, setSelectedLead] = useState<BusinessLead | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState<boolean>(false);
@@ -44,6 +40,7 @@ function AppContent() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { addToast } = useToast();
 
   const { isConnected: sseConnected, on: onSSE } = useSSE();
@@ -102,25 +99,8 @@ function AppContent() {
     return unsub;
   }, [onSSE, addToast]);
 
-  const handleAddLog = useCallback((log: TerminalLog) => {
-    setTerminalLogs((prev) => [...prev, log]);
-  }, []);
-
-  const handleClearLogs = useCallback(() => {
-    setTerminalLogs([]);
-  }, []);
-
   const handleExecuteSearch = async (criteria: SearchFilterCriteria): Promise<BusinessLead[]> => {
     setIsAgentRunning(true);
-    const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
-
-    handleAddLog({
-      id: `log-${Date.now()}-1`,
-      timestamp: timeStr,
-      agent: 'Master Planner',
-      level: 'info',
-      message: `Initiating agent search grid for ${criteria.category} in ${criteria.city}, ${criteria.province}`
-    });
 
     try {
       const data = await api.runSearch(criteria);
@@ -133,14 +113,6 @@ function AppContent() {
           return [...filteredNew, ...prev];
         });
 
-        handleAddLog({
-          id: `log-${Date.now()}-2`,
-          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
-          agent: 'Google Places Discovery',
-          level: 'success',
-          message: `Discovered and verified ${newLeads.length} business lead records in ${criteria.city}.`
-        });
-
         addToast({
           type: 'success',
           title: `Discovered ${newLeads.length} leads`,
@@ -150,13 +122,6 @@ function AppContent() {
       return newLeads;
     } catch (err) {
       console.error('Error running search:', err);
-      handleAddLog({
-        id: `log-${Date.now()}-err`,
-        timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
-        agent: 'Master Planner',
-        level: 'error',
-        message: 'Failed to communicate with agent service endpoint.'
-      });
       addToast({
         type: 'error',
         title: 'Search failed',
@@ -206,13 +171,6 @@ function AppContent() {
     setLeads((prev) =>
       prev.map((l) => (leadIds.includes(l.id) ? { ...l, status: newStatus } : l))
     );
-    handleAddLog({
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
-      agent: 'Team Collaboration Swarm',
-      level: 'success',
-      message: `Batch updated status for ${leadIds.length} lead(s) to "${newStatus}".`
-    });
     addToast({
       type: 'success',
       title: `Updated ${leadIds.length} leads`,
@@ -238,7 +196,6 @@ function AppContent() {
             setActiveTab={setActiveTab}
             setSelectedLead={setSelectedLead}
             onQuickSearch={handleQuickSearch}
-            onOpenTerminal={() => setIsTerminalOpen(true)}
           />
         );
       case 'search':
@@ -247,8 +204,6 @@ function AppContent() {
             onExecuteSearch={handleExecuteSearch}
             setActiveTab={setActiveTab}
             setSelectedLead={setSelectedLead}
-            onOpenTerminal={() => setIsTerminalOpen(true)}
-            onAddGlobalLog={handleAddLog}
           />
         );
       case 'explorer':
@@ -279,7 +234,7 @@ function AppContent() {
       case 'exports':
         return <ExportCenterView leads={leads} />;
       case 'agents-memory':
-        return <AgentMemoryView onOpenTerminal={() => setIsTerminalOpen(true)} />;
+        return <AgentMemoryView />;
       case 'outreach':
         return <CampaignTrackerView leads={leads} />;
       case 'approvals':
@@ -302,11 +257,12 @@ function AppContent() {
         setActiveTab={setActiveTab}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         totalLeadsCount={leads.length}
         hotLeadsCount={hotLeadsCount}
         isAgentRunning={isAgentRunning}
-        terminalLogsCount={terminalLogs.length}
-        onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+        terminalLogsCount={0}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -318,7 +274,6 @@ function AppContent() {
           notificationCount={unreadNotifications}
           onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
           sseConnected={sseConnected}
         />
 
@@ -334,16 +289,6 @@ function AppContent() {
           </div>
         </main>
       </div>
-
-      <TerminalLogsOverlay
-        logs={terminalLogs}
-        onClearLogs={handleClearLogs}
-        onAddLog={handleAddLog}
-        isAgentRunning={isAgentRunning}
-        isOpen={isTerminalOpen}
-        onClose={() => setIsTerminalOpen(false)}
-        activeTab={activeTab}
-      />
 
       <NotificationsPanel
         isOpen={isNotificationsOpen}

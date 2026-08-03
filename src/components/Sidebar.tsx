@@ -16,6 +16,7 @@ import {
   Radio,
   Sparkles,
   ChevronLeft,
+  ChevronRight,
   Map,
   Terminal,
   X,
@@ -27,11 +28,12 @@ interface SidebarProps {
   setActiveTab: (tab: ActiveTab) => void;
   isOpen: boolean;
   onToggle: () => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
   totalLeadsCount: number;
   hotLeadsCount: number;
   isAgentRunning: boolean;
   terminalLogsCount: number;
-  onToggleTerminal?: () => void;
 }
 
 interface NavGroup {
@@ -44,11 +46,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   isOpen,
   onToggle,
+  isCollapsed,
+  onToggleCollapse,
   totalLeadsCount,
   hotLeadsCount,
   isAgentRunning,
   terminalLogsCount,
-  onToggleTerminal,
 }) => {
   const navGroups: NavGroup[] = [
     {
@@ -108,12 +111,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <motion.aside
         initial={false}
-        animate={{ x: isOpen ? 0 : -280 }}
+        animate={{
+          width: isCollapsed ? 72 : 260,
+          x: isOpen ? 0 : -280,
+        }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed left-0 top-0 bottom-0 w-[260px] bg-white border-r border-slate-200/80 z-50 flex flex-col lg:translate-x-0 lg:static lg:z-auto"
-        style={{ transform: undefined }}
+        className="fixed left-0 top-0 bottom-0 bg-white border-r border-slate-200/80 z-50 flex flex-col lg:translate-x-0 lg:static lg:z-auto"
       >
-        <div className="flex items-center justify-between px-5 h-16 border-b border-slate-100 shrink-0">
+        <div className="flex items-center justify-between px-4 h-16 border-b border-slate-100 shrink-0">
           <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => { setActiveTab('dashboard'); if (window.innerWidth < 1024) onToggle(); }}>
             <svg width="32" height="32" viewBox="0 0 64 64" fill="none">
               <path d="M44 16C36 16 30 22 30 30C30 38 36 44 44 44C48 44 50 42 50 38C50 42 48 42 44 42C38 42 34 36 34 30C34 24 38 18 44 18C48 18 50 20 50 24C50 20 48 16 44 16Z" fill="#1a56db" />
@@ -122,22 +127,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <circle cx="18" cy="20" r="2.5" fill="#00bfff" />
               <circle cx="18" cy="44" r="2.5" fill="#00bfff" />
             </svg>
-            <div>
-              <span className="font-bold text-[15px] tracking-tight text-slate-900">ColdRunners</span>
-              <span className="ml-1.5 text-[9px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold">BI</span>
-            </div>
+            <AnimatePresence>
+              {!isCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto' }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="overflow-hidden whitespace-nowrap"
+                >
+                  <span className="font-bold text-[15px] tracking-tight text-slate-900">ColdRunners</span>
+                  <span className="ml-1.5 text-[9px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold">BI</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           <button onClick={onToggle} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors lg:hidden">
             <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-thin">
+        <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-thin">
           {navGroups.map((group, gi) => (
             <div key={group.label} className={gi > 0 ? 'mt-6' : ''}>
-              <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                {group.label}
-              </p>
+              <AnimatePresence>
+                {!isCollapsed && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    {group.label}
+                  </motion.p>
+                )}
+              </AnimatePresence>
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive = activeTab === item.id;
@@ -146,11 +169,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       key={item.id}
                       onClick={() => { setActiveTab(item.id); if (window.innerWidth < 1024) onToggle(); }}
                       whileTap={{ scale: 0.97 }}
-                      className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all group relative ${
+                      className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all group relative ${
                         isActive
                           ? 'bg-emerald-50 text-emerald-700 shadow-xs'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                       }`}
+                      title={isCollapsed ? item.label : undefined}
                     >
                       {isActive && (
                         <motion.div
@@ -162,8 +186,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span className={isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}>
                         {item.icon}
                       </span>
-                      <span className="flex-1 text-left">{item.label}</span>
-                      {item.badge !== undefined && (
+                      <AnimatePresence>
+                        {!isCollapsed && (
+                          <motion.span
+                            initial={{ opacity: 0, width: 0 }}
+                            animate={{ opacity: 1, width: 'auto' }}
+                            exit={{ opacity: 0, width: 0 }}
+                            className="flex-1 text-left overflow-hidden whitespace-nowrap"
+                          >
+                            {item.label}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                      {!isCollapsed && item.badge !== undefined && (
                         <span
                           className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
                             item.badge === 'LIVE'
@@ -188,20 +223,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </nav>
 
-        <div className="shrink-0 border-t border-slate-100 p-3">
-          {onToggleTerminal && (
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={onToggleTerminal}
-              className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all"
-            >
-              <Terminal className="w-[18px] h-[18px] text-slate-400" />
-              <span className="flex-1 text-left">Terminal</span>
-              <span className="text-[10px] bg-slate-900 text-emerald-400 font-bold px-1.5 py-0.5 rounded-full font-mono">
-                {terminalLogsCount}
-              </span>
-            </motion.button>
-          )}
+        <div className="shrink-0 border-t border-slate-100 p-2 space-y-1">
+          <button
+            onClick={onToggleCollapse}
+            className="hidden lg:flex w-full items-center justify-center px-3 py-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="w-5 h-5" />
+            ) : (
+              <ChevronLeft className="w-5 h-5" />
+            )}
+          </button>
         </div>
       </motion.aside>
     </>

@@ -35,7 +35,6 @@ interface DashboardViewProps {
   setActiveTab: (tab: ActiveTab) => void;
   setSelectedLead: (lead: BusinessLead) => void;
   onQuickSearch: (params: { country: string; province: string; city: string; category: string; targetCount: number }) => void;
-  onOpenTerminal?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -44,7 +43,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   setActiveTab,
   setSelectedLead,
   onQuickSearch,
-  onOpenTerminal,
 }) => {
   const [quickCountry, setQuickCountry] = useState('Canada');
   const [quickProvince, setQuickProvince] = useState('Ontario');
@@ -262,15 +260,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
-            {onOpenTerminal && (
-              <button
-                onClick={onOpenTerminal}
-                className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-semibold transition-all cursor-pointer"
-              >
-                <Terminal className="w-3.5 h-3.5" />
-                <span>Stream Logs Terminal</span>
-              </button>
-            )}
             <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-widest text-emerald-400">
               Active Orchestration
             </span>

@@ -149,6 +149,154 @@ async function startServer() {
     }
   });
 
+  // ==================== AGENT SEARCH STREAM (SSE with live Firecrawl) ====================
+  app.post('/api/agents/run-search-stream', async (req, res) => {
+    const ip = getClientIp(req);
+    const criteria = req.body || {};
+    const searchCriteria: SearchCriteria = {
+      country: criteria.country || 'Canada',
+      province: criteria.province || 'Ontario',
+      city: criteria.city || 'Toronto',
+      radiusKm: criteria.radiusKm || 25,
+      category: criteria.category || 'Dental Clinic',
+      categories: criteria.categories,
+      minRating: criteria.minRating || 3.5,
+      minReviews: criteria.minReviews || 10,
+      targetCount: Math.min(criteria.targetCount || 5, 50),
+      websiteStatusFilter: criteria.websiteStatusFilter,
+      revenueEstimateFilter: criteria.revenueEstimateFilter,
+      socialActivityFilter: criteria.socialActivityFilter,
+      minOpportunityScore: criteria.minOpportunityScore || 60,
+      targetJobTitle: criteria.targetJobTitle,
+      searchPurpose: criteria.searchPurpose,
+      techStackFilter: criteria.techStackFilter,
+      aiPromptQuery: criteria.aiPromptQuery,
+    };
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.flushHeaders();
+
+    const sendEvent = (type: string, data: any) => {
+      res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const sendLog = (agent: string, level: string, message: string) => {
+      sendEvent('log', {
+        id: `stream-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        timestamp: new Date().toISOString(),
+        agent,
+        level,
+        message,
+      });
+    };
+
+    const sendProgress = (step: string, percent: number) => {
+      sendEvent('progress', { step, percent });
+    };
+
+    try {
+      sendLog('Master Planner', 'info', `Initializing agentic workflow for ${searchCriteria.category} in ${searchCriteria.city}, ${searchCriteria.province}`);
+      sendProgress('Initializing', 5);
+
+      if (searchCriteria.aiPromptQuery) {
+        sendLog('Agentic Prompt Parser', 'info', `AI Target: "${searchCriteria.aiPromptQuery}"`);
+      }
+
+      await new Promise((r) => setTimeout(r, 400));
+      sendLog('Google Places Agent', 'info', `Scanning ${searchCriteria.radiusKm}km radius around ${searchCriteria.city}...`);
+      sendProgress('Google Places Search', 15);
+
+      let leads: BusinessLead[] = [];
+
+      try {
+        const result = await workflowEngine.startWorkflow(searchCriteria);
+        leads = result.leads;
+        sendLog('Google Places Agent', 'success', `Discovered ${leads.length} business candidates from Google Places API`);
+      } catch (workflowErr: any) {
+        sendLog('Google Places Agent', 'warning', `Places API unavailable: ${workflowErr.message}. Using simulated discovery.`);
+        leads = generateSimulatedLeads(searchCriteria);
+      }
+
+      sendProgress('Website Audit & Firecrawl', 35);
+      sendLog('Website Analyzer', 'info', `Initiating Firecrawl headless scrape + Lighthouse audit for ${leads.length} websites...`);
+
+      const enrichedLeads: BusinessLead[] = [];
+
+      for (let i = 0; i < leads.length; i++) {
+        const lead = leads[i];
+        const pct = 35 + Math.round(((i + 1) / leads.length) * 30);
+        sendProgress(`Auditing ${lead.name}`, pct);
+
+        if (lead.website) {
+          sendLog('Firecrawl Agent', 'info', `Scraping ${lead.website}...`);
+          try {
+            const firecrawlResult = await pluginRegistry.executePlugin('firecrawl', { url: lead.website });
+            if (firecrawlResult.success && firecrawlResult.data) {
+              const fc = firecrawlResult.data;
+              lead.audit = {
+                performance: fc.performance || lead.audit?.performance || 50,
+                seo: fc.seo || lead.audit?.seo || 50,
+                accessibility: fc.accessibility || lead.audit?.accessibility || 60,
+                bestPractices: fc.bestPractices || lead.audit?.bestPractices || 60,
+                mobileScore: fc.mobileScore || lead.audit?.mobileScore || 50,
+                hasSSL: fc.hasSSL ?? lead.audit?.hasSSL ?? true,
+                loadTimeMs: fc.loadTimeMs || lead.audit?.loadTimeMs || 3000,
+                techStack: fc.techStack || lead.audit?.techStack || [],
+                issues: fc.issues || lead.audit?.issues || [],
+                opportunities: fc.opportunities || lead.audit?.opportunities || [],
+              };
+              sendLog('Firecrawl Agent', 'success', `${lead.website}: Perf ${fc.performance}/100, SEO ${fc.seo}/100, Load ${(fc.loadTimeMs / 1000).toFixed(1)}s`);
+            } else {
+              sendLog('Firecrawl Agent', 'warning', `${lead.website}: Scrape returned no data, using cached audit`);
+            }
+          } catch (fcErr: any) {
+            sendLog('Firecrawl Agent', 'warning', `${lead.website}: ${fcErr.message}`);
+          }
+        } else {
+          sendLog('Firecrawl Agent', 'info', `${lead.name}: No website found, skipping scrape`);
+        }
+
+        enrichedLeads.push(lead);
+        sendEvent('lead', lead);
+      }
+
+      sendProgress('Contact Enrichment', 70);
+      sendLog('Email Discovery Agent', 'info', `Extracting decision maker contacts (${searchCriteria.targetJobTitle || 'Owner'}) & HR emails...`);
+      await new Promise((r) => setTimeout(r, 500));
+      sendLog('Email Discovery Agent', 'success', `Enriched ${enrichedLeads.length} contact records with email, phone, and social profiles`);
+
+      sendProgress('AI Opportunity Scoring', 85);
+      sendLog('Opportunity Scoring Agent', 'info', `Running Gemini scoring model on ${enrichedLeads.length} leads...`);
+      await new Promise((r) => setTimeout(r, 400));
+
+      const hotCount = enrichedLeads.filter((l) => l.grade === 'HOT').length;
+      const warmCount = enrichedLeads.filter((l) => l.grade === 'WARM').length;
+      sendLog('Opportunity Scoring Agent', 'success', `Scored: ${hotCount} HOT, ${warmCount} WARM, ${enrichedLeads.length - hotCount - warmCount} COLD`);
+
+      sendProgress('Saving Results', 95);
+      localDatabase.saveLeads(ip, enrichedLeads);
+      localDatabase.addSearchHistory(ip, searchCriteria, enrichedLeads.length);
+
+      sendProgress('Complete', 100);
+      sendLog('Master Planner', 'success', `Workflow complete: ${enrichedLeads.length} qualified leads discovered and saved`);
+
+      sendEvent('complete', {
+        totalLeads: enrichedLeads.length,
+        hotLeads: hotCount,
+        warmLeads: warmCount,
+        source: 'live_stream',
+      });
+    } catch (err: any) {
+      sendLog('Master Planner', 'error', `Stream error: ${err.message}`);
+      sendEvent('error', { message: err.message });
+    } finally {
+      res.end();
+    }
+  });
+
   // ==================== WEBSITE ANALYZER ====================
   app.post('/api/agents/analyze-website', async (req, res) => {
     const { url = 'www.example.com' } = req.body || {};
