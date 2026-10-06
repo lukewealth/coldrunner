@@ -4,9 +4,12 @@ dist/
 coverage/
 .DS_Store
 *.log
+temp_auto_push.bat
 !.env.example
 data/local-store/
 *.db
 *.db-wal
 *.db-shm
 config.bat
+.gitignore
+branch_structure.json
