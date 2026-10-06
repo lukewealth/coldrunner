@@ -1,108 +1,201 @@
 # ColdRunners
 
-**Agentic business-intelligence and lead-research platform**
+**Agentic business-intelligence platform that discovers, analyzes, scores, and exports qualified business leads.**
 
-ColdRunners is a TypeScript-based application for discovering, analyzing, scoring, and exporting business leads. The repository combines a React/Vite frontend, an Express backend, agent workflows, and an MCP server.
+Local-first multi-agent system built with TypeScript, Express, React, and MCP. A Master Planner orchestrates specialist agents that call compliant external APIs, score opportunities, and expose tools/resources over the Model Context Protocol.
 
-> **Documentation note:** This README describes capabilities visible in the repository. It does not claim production scale, customer volume, uptime, or business outcomes unless those are measured and documented elsewhere.
+> **Honesty note:** This README describes what is implemented in the repository and what is planned. It does not claim production scale, customer volume, uptime SLAs, or business outcomes unless those are measured and documented.
 
-## Engineering focus
+## Problem
 
-- Agent workflow orchestration
-- MCP server integration
-- Tool and resource integration
-- Lead/opportunity scoring
-- External API integration
-- Graceful fallback behavior
-- Backend/frontend separation
-- Export pipelines
+Finding and qualifying business leads is slow and fragmented. Sales and growth teams manually search directories, scrape websites, enrich contacts, and score fit — work that is repetitive, error-prone, and hard to scale without burning API budget or violating terms of service.
+
+## Solution
+
+ColdRunners automates the lead-research workflow with a hierarchical agent system:
+
+1. Discover businesses (location + category)
+2. Analyze websites and technical signals
+3. Enrich contacts
+4. Score opportunity (0–100, HOT / WARM / COLD)
+5. Deduplicate and export
+
+An MCP server exposes the same capabilities as tools and resources so external agents and assistants can drive the platform programmatically. The system degrades gracefully when API keys are missing (simulated fallback data).
 
 ## Architecture
 
+### Current (Phase 1 — implemented)
+
 ```
-React + Vite frontend
-        |
-     Express
-        |
-  Workflow / Agents
-     /       \
- Plugins     MCP Server
-     \       /
-     External APIs
-```
-
-The repository documentation describes a six-agent workflow coordinated by a master planner and an MCP layer exposing tools and resources. Treat those as repository architecture claims; verify implementation details against the current source before describing the system as production infrastructure.
-
-## Technology
-
-- TypeScript
-- Node.js
-- Express
-- React
-- Vite
-- Tailwind CSS
-- MCP
-- Google Gemini API
-- Google Places
-- Firecrawl
-- Hunter.io
-- Apollo.io
-- PageSpeed Insights
-
-## Local development
-
-```bash
-npm install
-cp .env.example .env
-npm run dev
+React Frontend (Vite + Tailwind)
+         │
+    Express Server
+         │
+    ┌────┼────────────────┐
+    │    │                │
+  Agents Plugins       MCP Server
+    │    │                │
+    └────┼────────────────┘
+         │
+   Workflow Engine
+         │
+   In-Memory / SQLite-ready DB
 ```
 
-Available scripts documented by the repository include:
+**Agent hierarchy (implemented):**
 
-```bash
-npm run dev
-npm run build
-npm run start
-npm run lint
-npm run clean
-```
+- Master Planner — orchestrates the full workflow
+- Google Places Discovery Agent
+- Website Intelligence Agent (Firecrawl + PageSpeed)
+- Contact Discovery Agent (Hunter / Apollo)
+- Opportunity Scoring Agent
+- Duplicate Detection Agent
+
+**MCP layer (implemented):** 9 tools + 6 resources (see `docs/mcp.md`).
+
+### Target (Phase 2–4 — roadmap)
+
+PostgreSQL, Qdrant / vector layer, local models via Ollama, additional agents (crawler, embedding, SEO, revenue estimation, report generator), queues, stronger observability. See `ARCHITECTURE.md` and `docs/roadmap.md`.
+
+## Features
+
+- **Autonomous agent workflow** — Master Planner + 5 specialist agents
+- **MCP server** — 9 tools + 6 resources for external agent integration
+- **Compliant API plugins** — Google Places, Firecrawl, Hunter.io, Apollo.io, PageSpeed Insights
+- **Opportunity scoring** — 0–100 algorithm with HOT / WARM / COLD classification
+- **Multi-format export** — CSV, JSON, Excel, Markdown
+- **Real-time dashboard** — lead explorer, campaign builder, reports, terminal logs
+- **Graceful degradation** — runs without API keys using simulated fallback data
+- **Plugin health checks** and structured workflow logging
+
+## Tech stack
+
+| Layer | Technology |
+|-------|------------|
+| Language | TypeScript 5.8 |
+| Backend | Express 4, Node.js |
+| Frontend | React 19, Vite 6, Tailwind CSS 4 |
+| Charts / UI | Recharts, Motion, Lucide |
+| AI | Google Gemini (`@google/genai`); Ollama planned |
+| Protocol | Model Context Protocol (MCP) |
+| Data | In-memory + better-sqlite3 path ready |
+| APIs | Google Places, Firecrawl, Hunter.io, Apollo.io, PageSpeed |
+| Tooling | tsx, esbuild, Docker Compose (supporting services) |
 
 ## Repository structure
 
-The project is organized around a frontend, Express backend, agent/workflow logic, integrations, and MCP functionality. See the repository's `docs/` directory and architecture documents for the current implementation details.
+```
+.
+├── server.ts                 # Express entry + routes
+├── src/
+│   ├── server/
+│   │   ├── agents/           # Master Planner + specialist agents
+│   │   ├── plugins/          # API integrations
+│   │   ├── mcp/              # MCP server (tools + resources)
+│   │   └── services/         # DB, export, workflow
+│   └── ...                   # Frontend components & views
+├── docs/                     # Engineering handbook
+├── ARCHITECTURE.md
+├── AGENTS.md
+├── PLAN.md
+├── docker-compose.yaml
+├── .env.example
+└── package.json
+```
 
-## AI Systems Engineering relevance
+See `docs/` for deeper backend, frontend, API, MCP, agents, and roadmap docs.
 
-ColdRunners is a useful proof-of-work project for:
+## Installation
 
-- agent orchestration
-- tool calling
-- MCP
-- API integration
-- workflow design
-- backend engineering
-- failure/fallback handling
+```bash
+git clone https://github.com/lukewealth/coldrunner.git
+cd coldrunner
+npm install
+cp .env.example .env
+# Edit .env with your keys (optional — system falls back to simulated data)
+npm run dev
+```
 
-For portfolio claims, distinguish **implemented behavior** from roadmap architecture.
+Open `http://localhost:3000`.
 
-## Documentation
+## Environment variables
 
-- [ARCHITECTURE.md](ARCHITECTURE.md)
-- [AGENTS.md](AGENTS.md)
-- [docs/architecture.md](docs/architecture.md)
-- [docs/backend.md](docs/backend.md)
-- [docs/api.md](docs/api.md)
-- [docs/mcp.md](docs/mcp.md)
-- [docs/agents.md](docs/agents.md)
-- [docs/roadmap.md](docs/roadmap.md)
+Copy `.env.example`. Key variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `GEMINI_API_KEY` | LLM calls |
+| `GOOGLE_PLACES_API_KEY` | Business discovery |
+| `GOOGLE_PAGESPEED_API_KEY` | Performance audits |
+| `FIRECRAWL_API_KEY` | Website scraping |
+| `HUNTER_API_KEY` / `APOLLO_API_KEY` | Contact enrichment |
+| `PORT` | Server port (default 3000) |
+| `DB_PATH` | SQLite path when enabled |
+| `MAX_CONCURRENT_AGENTS` / `AGENT_TIMEOUT` / `AGENT_RETRY_ATTEMPTS` | Agent runtime |
+| `CACHE_*` | Cache behaviour |
+
+Never commit real secrets. Prefer a secret manager in any shared or production environment.
+
+## Usage
+
+```bash
+npm run dev      # Development (tsx server.ts)
+npm run build    # Production build (Vite + esbuild)
+npm run start    # Run production server
+npm run lint     # TypeScript check (`tsc --noEmit`)
+npm run clean    # Remove build artifacts
+```
+
+Drive the UI for interactive workflows, or call the MCP tools/resources from compatible clients (see `docs/mcp.md`).
+
+## Testing
+
+Current status: TypeScript type-checking via `npm run lint`. Automated unit/integration test suite is limited; treat behaviour verification as manual + type-level for now.
+
+**Recommended next steps:** unit tests for scoring and deduplication, plugin contract tests with mocked APIs, and lightweight end-to-end smoke tests for the main workflow.
+
+## Deployment
+
+- Local / self-host: `npm run build && npm run start`
+- Demo deployment has been used on Vercel (`coldrunner-ten.vercel.app` — confirm current status)
+- Supporting services (e.g. SearXNG) via `docker-compose.yaml`
+
+Production hardening (auth, rate limits, persistent DB, observability) is part of the roadmap, not claimed as complete.
+
+## Security
+
+- API keys and secrets must come from environment variables or a managed secret store.
+- Do not commit `.env` or any real credentials.
+- MCP tools and agent plugins should be treated as privileged: constrain what external callers can invoke.
+- Prompt-injection and tool-permission boundaries for agentic systems remain an active design concern; document and enforce allow-lists as the tool surface grows.
+- Review `.gitignore` and remove any accidentally committed secrets from history if present.
+
+## Limitations
+
+- Phase 1 storage is in-memory / SQLite-ready, not a full multi-tenant production database.
+- Some enrichment quality depends on third-party API availability and quotas.
+- Local LLM path (Ollama) is planned, not the primary runtime today.
+- Automated test coverage is not yet comprehensive.
+- Not a claim of compliance certification (SOC2, etc.).
+
+## Current status
+
+**Active engineering / portfolio proof-of-work project.**  
+Phase 1 agent workflow, MCP server, plugins, dashboard, and export paths are present in the repository. Verify any specific claim against the current source tree and docs before using it in a CV or interview.
+
+## Roadmap
+
+High-level (see `docs/roadmap.md` and `ARCHITECTURE.md` for detail):
+
+- Persistent PostgreSQL + vector store (Qdrant)
+- Local model routing (Ollama)
+- Additional agents (crawler, embeddings, SEO, revenue estimation, report generation)
+- Stronger evaluation, observability, and security controls
+- Queue-backed async export and outreach flows
 
 ## Keywords
 
-AI Systems Engineer, Agentic AI, AI Agents, MCP, Model Context Protocol, LLM applications, TypeScript, Node.js, Express, React, API integration, workflow orchestration, business intelligence, automation.
-
-## Status
-
-Active engineering project / portfolio proof of work. Check the latest commits and documentation for implementation status.
+`ai` `artificial-intelligence` `agentic-ai` `ai-agents` `llm` `mcp` `model-context-protocol` `typescript` `nodejs` `express` `react` `backend` `api` `automation` `software-architecture` `workflow-orchestration` `business-intelligence`
 
 ## License
 
