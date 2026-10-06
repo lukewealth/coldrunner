@@ -1,12 +1,55 @@
-# ColdRunners — Autonomous Business Intelligence Platform
+# ColdRunners
 
-<div align="center">
-<img src="coldlogo.png" alt="ColdRunners" width="200" />
-</div>
+**Agentic business-intelligence and lead-research platform**
 
-Local-first agentic AI platform that autonomously discovers, analyzes, scores, and exports qualified business leads. Built with TypeScript, Express, React, and MCP.
+ColdRunners is a TypeScript-based application for discovering, analyzing, scoring, and exporting business leads. The repository combines a React/Vite frontend, an Express backend, agent workflows, and an MCP server.
 
-## Quick Start
+> **Documentation note:** This README describes capabilities visible in the repository. It does not claim production scale, customer volume, uptime, or business outcomes unless those are measured and documented elsewhere.
+
+## Engineering focus
+
+- Agent workflow orchestration
+- MCP server integration
+- Tool and resource integration
+- Lead/opportunity scoring
+- External API integration
+- Graceful fallback behavior
+- Backend/frontend separation
+- Export pipelines
+
+## Architecture
+
+```
+React + Vite frontend
+        |
+     Express
+        |
+  Workflow / Agents
+     /       \
+ Plugins     MCP Server
+     \       /
+     External APIs
+```
+
+The repository documentation describes a six-agent workflow coordinated by a master planner and an MCP layer exposing tools and resources. Treat those as repository architecture claims; verify implementation details against the current source before describing the system as production infrastructure.
+
+## Technology
+
+- TypeScript
+- Node.js
+- Express
+- React
+- Vite
+- Tailwind CSS
+- MCP
+- Google Gemini API
+- Google Places
+- Firecrawl
+- Hunter.io
+- Apollo.io
+- PageSpeed Insights
+
+## Local development
 
 ```bash
 npm install
@@ -14,75 +57,53 @@ cp .env.example .env
 npm run dev
 ```
 
-Open `http://localhost:3000`
+Available scripts documented by the repository include:
 
-## Features
-
-- **Autonomous Agent Workflow** — 6 specialized agents orchestrated by Master Planner
-- **MCP Server** — 9 tools + 6 resources for AI agent integration
-- **Compliant APIs** — Google Places, Firecrawl, Hunter.io, Apollo.io, PageSpeed
-- **Opportunity Scoring** — 0-100 algorithm with HOT/WARM/COLD classification
-- **Multi-format Export** — CSV, JSON, Excel, Markdown
-- **Real-time Dashboard** — Lead explorer, campaign builder, reports, terminal logs
-- **Graceful Degradation** — Works without API keys using simulated fallback data
-
-## Architecture
-
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+npm run clean
 ```
-React Frontend (Vite + Tailwind)
-         │
-    Express Server
-         │
-    ┌────┼────────────────┐
-    │    │                │
-  Agents Plugins       MCP Server
-    │    │                │
-    └────┼────────────────┘
-         │
-   Workflow Engine
-         │
-    In-Memory DB
-```
+
+## Repository structure
+
+The project is organized around a frontend, Express backend, agent/workflow logic, integrations, and MCP functionality. See the repository's `docs/` directory and architecture documents for the current implementation details.
+
+## AI Systems Engineering relevance
+
+ColdRunners is a useful proof-of-work project for:
+
+- agent orchestration
+- tool calling
+- MCP
+- API integration
+- workflow design
+- backend engineering
+- failure/fallback handling
+
+For portfolio claims, distinguish **implemented behavior** from roadmap architecture.
 
 ## Documentation
 
-See [docs/](docs/) for the complete engineering handbook.
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [AGENTS.md](AGENTS.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/backend.md](docs/backend.md)
+- [docs/api.md](docs/api.md)
+- [docs/mcp.md](docs/mcp.md)
+- [docs/agents.md](docs/agents.md)
+- [docs/roadmap.md](docs/roadmap.md)
 
-| Document | Description |
-|----------|-------------|
-| [PLAN.md](PLAN.md) | Product vision, phases, milestones |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture overview |
-| [AGENTS.md](AGENTS.md) | Agent orchestration rules |
-| [CLAUDE.md](CLAUDE.md) | AI coding guide |
-| [docs/architecture.md](docs/architecture.md) | Detailed system architecture |
-| [docs/backend.md](docs/backend.md) | Backend standards |
-| [docs/frontend.md](docs/frontend.md) | Frontend architecture |
-| [docs/api.md](docs/api.md) | API reference |
-| [docs/mcp.md](docs/mcp.md) | MCP integration guide |
-| [docs/agents.md](docs/agents.md) | Agent system deep dive |
-| [docs/localmodels.md](docs/localmodels.md) | Local AI model handbook |
-| [docs/crawler.md](docs/crawler.md) | Crawler architecture |
-| [docs/roadmap.md](docs/roadmap.md) | Product roadmap |
+## Keywords
 
-## Tech Stack
+AI Systems Engineer, Agentic AI, AI Agents, MCP, Model Context Protocol, LLM applications, TypeScript, Node.js, Express, React, API integration, workflow orchestration, business intelligence, automation.
 
-- **Backend:** Express 4, TypeScript 5.8, Vite 6
-- **Frontend:** React 19, Tailwind CSS 4, Recharts, Motion, Lucide
-- **AI:** Google Gemini API (Ollama planned)
-- **Protocol:** MCP (Model Context Protocol)
-- **APIs:** Google Places, Firecrawl, Hunter.io, Apollo.io, PageSpeed Insights
+## Status
 
-## Scripts
-
-```bash
-npm run dev        # Development server
-npm run build      # Production build
-npm run start      # Run production server
-npm run lint       # TypeScript type check
-npm run clean      # Clean build artifacts
-```
+Active engineering project / portfolio proof of work. Check the latest commits and documentation for implementation status.
 
 ## License
 
 Proprietary — ColdRunners
-# coldrunner
