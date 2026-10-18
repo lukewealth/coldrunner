@@ -60,7 +60,14 @@ class LocalDatabaseService {
         created_at TEXT DEFAULT (datetime('now'))
       );
 
-      CREATE TABLE IF NOT EXISTS lead_feedback (\n        id TEXT PRIMARY KEY,\n        lead_id TEXT NOT NULL,\n        rating TEXT NOT NULL,\n        field_name TEXT,\n        comment TEXT,\n        created_at TEXT DEFAULT (datetime('now'))\n      );\n\n      CREATE TABLE IF NOT EXISTS search_history (
+      CREATE TABLE IF NOT EXISTS lead_feedback (
+        id TEXT PRIMARY KEY,
+        lead_id TEXT NOT NULL,
+        rating TEXT NOT NULL,
+        field_name TEXT,
+        comment TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      );\n\n      CREATE TABLE IF NOT EXISTS search_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         criteria TEXT,
         result_count INTEGER,
