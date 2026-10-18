@@ -248,6 +248,33 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs text-slate-700">
           {activeTab === 'audit' && (
             <div className="space-y-6">
+              {lead.dataQuality && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-slate-700">Data quality checks</div>
+                      <p className="mt-1 text-[10px] text-slate-500">Format and completeness score — not a probability that every field is correct.</p>
+                    </div>
+                    <div className="text-lg font-black text-slate-900">{lead.dataQuality.score}/100</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+                    {Object.entries(lead.dataQuality.fields).map(([field, validation]) => (
+                      <div key={field} className="rounded-xl border border-slate-200 bg-white p-2">
+                        <div className="text-[10px] font-semibold capitalize text-slate-500">{field}</div>
+                        <div className={`mt-1 text-[10px] font-bold ${validation.status === 'invalid' ? 'text-red-600' : validation.status === 'missing' ? 'text-amber-600' : validation.status === 'verified' ? 'text-emerald-700' : 'text-blue-700'}`}>
+                          {validation.status}
+                        </div>
+                        <p className="mt-1 text-[10px] leading-snug text-slate-500">{validation.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {lead.dataQuality.warnings.length > 0 && (
+                    <ul className="space-y-1 text-[10px] text-amber-800">
+                      {lead.dataQuality.warnings.map((warning) => <li key={warning}>• {warning}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Performance</span>
