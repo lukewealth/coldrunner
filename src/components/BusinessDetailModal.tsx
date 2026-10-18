@@ -264,7 +264,7 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                         <div className={`mt-1 text-[10px] font-bold ${validation.status === 'invalid' ? 'text-red-600' : validation.status === 'missing' ? 'text-amber-600' : validation.status === 'verified' ? 'text-emerald-700' : 'text-blue-700'}`}>
                           {validation.status}
                         </div>
-                        <p className="mt-1 text-[10px] leading-snug text-slate-500">{validation.reason}</p>
+                        <p className="mt-1 text-[10px] leading-snug text-slate-500">{validation.reason}</p>{validation.source && <p className="mt-1 text-[10px] leading-snug text-slate-400">Source: {validation.source}</p>}
                       </div>
                     ))}
                   </div>
