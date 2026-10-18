@@ -59,6 +59,7 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
   const { addToast } = useToast();
 
   const submitLeadFeedback = async (rating: 'correct' | 'incorrect') => {
+    if (!lead) return;
     try {
       await api.submitLeadFeedback(lead.id, { rating, field: 'other' });
       addToast({ type: 'success', title: 'Feedback recorded', message: 'Thanks — this helps improve search quality.' });
