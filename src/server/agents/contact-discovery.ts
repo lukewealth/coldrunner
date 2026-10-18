@@ -73,7 +73,7 @@ export class ContactDiscoveryAgent implements Agent {
           }
 
           lead.dataQuality = assessLeadDataQuality({ email: lead.email, phone: lead.phone, website: lead.website, address: lead.address, socials: lead.socials, sources: { email: hunterResult?.success && hunterResult.data?.emails?.some((e) => e.address === lead.email) ? hunterResult.source : apolloResult?.success && apolloResult.data?.emails?.some((e) => e.address === lead.email) ? apolloResult.source : undefined, phone: apolloResult?.success && apolloResult.data?.phone === lead.phone ? apolloResult.source : hunterResult?.success && hunterResult.data?.phone === lead.phone ? hunterResult.source : undefined, website: lead.website ? (lead.googleMapsUrl ? 'Google Places website field' : 'Website URL; source not independently confirmed') : undefined, address: lead.address ? (lead.googleMapsUrl ? 'Google Places address field' : undefined) : undefined, socials: socialResult?.success ? socialResult.source : hunterResult?.success && hunterResult.data?.socialProfiles ? hunterResult.source : undefined } });
-          lead.verificationStatus = lead.dataQuality.score >= 75 ? 'Verified' : 'Enriched';
+          lead.verificationStatus = 'Enriched';
           processed++;
         } catch (error) {
           onLog({ agent: this.name, level: 'warning', message: `Contact discovery partial for ${lead.name}: ${error instanceof Error ? error.message : 'unknown error'}` });
