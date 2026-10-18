@@ -99,6 +99,7 @@ export class WebsiteAnalyzerAgent implements Agent {
   }
 
   private classifyWebsiteStatus(analysis: any): WebsiteStatus {
+    if (!analysis.metricsAvailable) return 'Pending Audit';
     if (!analysis.hasSSL) return 'Broken SSL';
     if (analysis.performance < 40) return 'Slow Speed';
     if (analysis.seo < 40) return 'Poor SEO';
