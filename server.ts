@@ -475,8 +475,8 @@ async function startServer() {
         leads = result.leads;
         sendLog('Google Places Agent', 'success', `Discovered ${leads.length} business candidates from Google Places API`);
       } catch (workflowErr: any) {
-        sendLog('Google Places Agent', 'warning', `Places API unavailable: ${workflowErr.message}. Using simulated discovery.`);
-        leads = generateSimulatedLeads(searchCriteria);
+        sendLog('Google Places Agent', 'error', `Live Places discovery failed: ${workflowErr.message}`);
+        throw workflowErr;
       }
 
       sendProgress('Website Audit & Firecrawl', 35);
@@ -558,33 +558,14 @@ async function startServer() {
 
   // ==================== WEBSITE ANALYZER ====================
   app.post('/api/agents/analyze-website', async (req, res) => {
-    const { url = 'www.example.com' } = req.body || {};
+    const { url } = req.body || {};
+    if (typeof url !== 'string' || !url.trim()) return res.status(400).json({ error: 'A website URL is required.' });
     try {
       const result = await pluginRegistry.executePlugin('firecrawl', { url });
-      if (result.success && result.data) {
-        res.json({
-          ...result.data,
-          agencyProposalPitch: generateProposalPitch(url, result.data),
-        });
-      } else {
-        throw new Error(result.error || 'Analysis failed');
-      }
+      if (!result.success || !result.data) return res.status(502).json({ error: result.error || 'Website analysis failed; no synthetic audit was returned.', source: result.source });
+      return res.json({ ...result.data, agencyProposalPitch: generateProposalPitch(url, result.data) });
     } catch (err: any) {
-      const domain = url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-      res.json({
-        url: domain,
-        performance: Math.floor(35 + Math.random() * 40),
-        seo: Math.floor(40 + Math.random() * 35),
-        accessibility: Math.floor(55 + Math.random() * 30),
-        bestPractices: Math.floor(60 + Math.random() * 30),
-        mobileScore: Math.floor(35 + Math.random() * 35),
-        hasSSL: true,
-        loadTimeMs: Math.floor(3400 + Math.random() * 2000),
-        techStack: ['WordPress 5.8', 'Elementor', 'Google Analytics', 'MySQL'],
-        issues: ['Unoptimized heavy hero images', 'Missing viewport meta configuration', 'No Schema.org Structured Data', 'Lacks online booking workflow'],
-        opportunities: ['Next.js/React redesign for 3x speed boost', 'AI Chatbot for instant lead qualification', 'Local SEO schema injection'],
-        agencyProposalPitch: `Proposal for ${domain}: Your current website needs a modern redesign with integrated AI booking to double your online inquiry volume within 60 days.`,
-      });
+      return res.status(502).json({ error: 'Website analysis failed; no synthetic audit was returned.', details: err instanceof Error ? err.message : 'Unknown error' });
     }
   });
 
