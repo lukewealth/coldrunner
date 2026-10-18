@@ -367,7 +367,8 @@ class LocalDatabaseService {
     const byRating: Record<string, number> = {};
     for (const row of rows) byRating[row.rating] = row.count;
     const recent = db.prepare('SELECT lead_id as leadId, rating, field_name as field, comment, created_at as createdAt FROM lead_feedback ORDER BY created_at DESC LIMIT 50').all() as Array<{ leadId: string; rating: string; field?: string; comment?: string; createdAt: string }>;
-    return { total: recent.length, byRating, recent };
+    const totalRow = db.prepare('SELECT COUNT(*) as count FROM lead_feedback').get() as { count: number };
+    return { total: totalRow.count, byRating, recent };
   }
 
   // Clear all data for an IP
