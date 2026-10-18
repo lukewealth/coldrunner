@@ -58,6 +58,15 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
   const [showPromptPreview, setShowPromptPreview] = useState<boolean>(false);
   const { addToast } = useToast();
 
+  const submitLeadFeedback = async (rating: 'correct' | 'incorrect') => {
+    try {
+      await api.submitLeadFeedback(lead.id, { rating, field: 'other' });
+      addToast({ type: 'success', title: 'Feedback recorded', message: 'Thanks — this helps improve search quality.' });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Feedback not saved', message: error instanceof Error ? error.message : 'Please try again.' });
+    }
+  };
+
   useEffect(() => {
     if (lead && activeTab === 'auto-email' && !draftBody) {
       handleGenerateDraftEmail(emailStyle);
@@ -267,6 +276,11 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                         <p className="mt-1 text-[10px] leading-snug text-slate-500">{validation.reason}</p>{validation.source && <p className="mt-1 text-[10px] leading-snug text-slate-400">Source: {validation.source}</p>}
                       </div>
                     ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
+                    <span className="mr-auto text-[10px] text-slate-500">Is this business data useful?</span>
+                    <button onClick={() => void submitLeadFeedback('correct')} className="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-50">Looks correct</button>
+                    <button onClick={() => void submitLeadFeedback('incorrect')} className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-50">Report an issue</button>
                   </div>
                   {lead.dataQuality.warnings.length > 0 && (
                     <ul className="space-y-1 text-[10px] text-amber-800">
