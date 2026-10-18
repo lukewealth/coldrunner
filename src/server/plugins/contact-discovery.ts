@@ -34,9 +34,7 @@ export class HunterPlugin extends BasePlugin {
   async execute(params: { domain: string; companyName?: string }): Promise<PluginResult<EmailDiscoveryResult>> {
     const { domain, companyName } = params;
 
-    if (!this.apiKey) {
-      return this.simulateDiscovery(domain, companyName);
-    }
+    if (!this.apiKey) { return { success: false, error: 'HUNTER_API_KEY is not configured; synthetic contacts are disabled.', confidence: 0, source: 'Hunter.io not configured', timestamp: new Date() }; }
 
     try {
       const url = new URL('https://api.hunter.io/v2/domain-search');
@@ -127,9 +125,7 @@ export class ApolloPlugin extends BasePlugin {
   }
 
   async execute(params: { companyName: string; city?: string; title?: string }): Promise<PluginResult<EmailDiscoveryResult>> {
-    if (!this.apiKey) {
-      return this.simulateDiscovery(params);
-    }
+    if (!this.apiKey) { return { success: false, error: 'APOLLO_API_KEY is not configured; synthetic contacts are disabled.', confidence: 0, source: 'Apollo.io not configured', timestamp: new Date() }; }
 
     try {
       const response = await this.fetchWithRetry('https://api.apollo.io/v1/mixed_people/search', {
@@ -151,9 +147,7 @@ export class ApolloPlugin extends BasePlugin {
       const data = await response.json();
       const people = data.people || [];
 
-      if (people.length === 0) {
-        return this.simulateDiscovery(params);
-      }
+      if (people.length === 0) { return { success: true, data: { emails: [] }, confidence: 0, source: 'Apollo.io API (no matching people)', timestamp: new Date() }; }
 
       const emails = people
         .filter((p: any) => p.email)
