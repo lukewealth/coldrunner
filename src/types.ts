@@ -55,7 +55,7 @@ export interface BusinessLead {
   recommendedService: string;
   aiInsights: string;
   dataConfidence: number;
-  dataQuality?: { score: number; checkedAt: string; warnings: string[]; fields: Record<string, { status: 'verified' | 'plausible' | 'invalid' | 'missing'; reason: string; checkedAt: string }> }; // e.g. 94%
+  dataQuality?: { score: number; checkedAt: string; warnings: string[]; fields: Record<string, { status: 'verified' | 'plausible' | 'invalid' | 'missing'; reason: string; checkedAt: string; source?: string }> }; // e.g. 94%
   verificationStatus: 'Verified' | 'Pending' | 'Enriched';
   lastUpdated: string;
   createdAt: string;
