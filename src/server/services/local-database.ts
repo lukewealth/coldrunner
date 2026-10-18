@@ -67,7 +67,9 @@ class LocalDatabaseService {
         field_name TEXT,
         comment TEXT,
         created_at TEXT DEFAULT (datetime('now'))
-      );\n\n      CREATE TABLE IF NOT EXISTS search_history (
+      );
+
+      CREATE TABLE IF NOT EXISTS search_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         criteria TEXT,
         result_count INTEGER,
