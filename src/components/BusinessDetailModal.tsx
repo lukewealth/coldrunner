@@ -58,6 +58,16 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
   const [showPromptPreview, setShowPromptPreview] = useState<boolean>(false);
   const { addToast } = useToast();
 
+  const submitLeadFeedback = async (rating: 'correct' | 'incorrect') => {
+    if (!lead) return;
+    try {
+      await api.submitLeadFeedback(lead.id, { rating, field: 'other' });
+      addToast({ type: 'success', title: 'Feedback recorded', message: 'Thanks — this helps improve search quality.' });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Feedback not saved', message: error instanceof Error ? error.message : 'Please try again.' });
+    }
+  };
+
   useEffect(() => {
     if (lead && activeTab === 'auto-email' && !draftBody) {
       handleGenerateDraftEmail(emailStyle);
@@ -248,25 +258,57 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs text-slate-700">
           {activeTab === 'audit' && (
             <div className="space-y-6">
+              {lead.dataQuality && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-slate-700">Data quality checks</div>
+                      <p className="mt-1 text-[10px] text-slate-500">Format and completeness score — not a probability that every field is correct.</p>
+                    </div>
+                    <div className="text-lg font-black text-slate-900">{lead.dataQuality.score}/100</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+                    {Object.entries(lead.dataQuality.fields).map(([field, validation]) => (
+                      <div key={field} className="rounded-xl border border-slate-200 bg-white p-2">
+                        <div className="text-[10px] font-semibold capitalize text-slate-500">{field}</div>
+                        <div className={`mt-1 text-[10px] font-bold ${validation.status === 'invalid' ? 'text-red-600' : validation.status === 'missing' ? 'text-amber-600' : validation.status === 'verified' ? 'text-emerald-700' : 'text-blue-700'}`}>
+                          {validation.status}
+                        </div>
+                        <p className="mt-1 text-[10px] leading-snug text-slate-500">{validation.reason}</p>{validation.source && <p className="mt-1 text-[10px] leading-snug text-slate-400">Source: {validation.source}</p>}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
+                    <span className="mr-auto text-[10px] text-slate-500">Is this business data useful?</span>
+                    <button onClick={() => void submitLeadFeedback('correct')} className="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-50">Looks correct</button>
+                    <button onClick={() => void submitLeadFeedback('incorrect')} className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-50">Report an issue</button>
+                  </div>
+                  {lead.dataQuality.warnings.length > 0 && (
+                    <ul className="space-y-1 text-[10px] text-amber-800">
+                      {lead.dataQuality.warnings.map((warning) => <li key={warning}>• {warning}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Performance</span>
-                  <div className={`text-2xl font-black ${lead.audit.performance < 50 ? 'text-red-600' : 'text-emerald-600'}`}>
-                    {lead.audit.performance}/100
+                  <div className={`text-2xl font-black ${!lead.audit.metricsAvailable ? 'text-slate-400' : lead.audit.performance < 50 ? 'text-red-600' : 'text-emerald-600'}`}>
+                    {lead.audit.metricsAvailable ? `${lead.audit.performance}/100` : 'Not measured'}
                   </div>
-                  <span className="text-[10px] text-slate-500">Load: {(lead.audit.loadTimeMs / 1000).toFixed(1)}s</span>
+                  <span className="text-[10px] text-slate-500">{lead.audit.loadTimeMs > 0 ? `Load: ${(lead.audit.loadTimeMs / 1000).toFixed(1)}s` : "Load time not measured"}</span>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">SEO Health</span>
-                  <div className={`text-2xl font-black ${lead.audit.seo < 60 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    {lead.audit.seo}/100
+                  <div className={`text-2xl font-black ${!lead.audit.metricsAvailable ? 'text-slate-400' : lead.audit.seo < 60 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {lead.audit.metricsAvailable ? `${lead.audit.seo}/100` : 'Not measured'}
                   </div>
                   <span className="text-[10px] text-slate-500">Local Maps Rank</span>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Accessibility</span>
                   <div className="text-2xl font-black text-blue-600">
-                    {lead.audit.accessibility}/100
+                    {lead.audit.metricsAvailable ? `${lead.audit.accessibility}/100` : 'Not measured'}
                   </div>
                   <span className="text-[10px] text-slate-500">Mobile Friendly</span>
                 </div>
@@ -275,7 +317,7 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                   <div className="text-2xl font-black text-emerald-600 flex items-center justify-center">
                     {lead.audit.hasSSL ? <ShieldCheck className="w-6 h-6 text-emerald-600" /> : <AlertTriangle className="w-6 h-6 text-red-600" />}
                   </div>
-                  <span className="text-[10px] text-slate-500">{lead.audit.hasSSL ? 'HTTPS Active' : 'No SSL Warning'}</span>
+                  <span className="text-[10px] text-slate-500">{lead.audit.hasSSL ? 'HTTPS URL (certificate not independently checked)' : 'HTTP URL'}</span>
                 </div>
               </div>
 

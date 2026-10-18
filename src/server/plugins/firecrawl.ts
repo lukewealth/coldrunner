@@ -5,6 +5,7 @@ import { config } from '../config';
 interface WebsiteAnalysisResult {
   url: string;
   exists: boolean;
+  metricsAvailable?: boolean;
   statusCode?: number;
   performance: number;
   seo: number;
@@ -45,9 +46,7 @@ export class FirecrawlPlugin extends BasePlugin {
     const { url } = params;
     const normalizedUrl = this.normalizeUrl(url);
 
-    if (!this.apiKey) {
-      return this.simulateAnalysis(normalizedUrl);
-    }
+    if (!this.apiKey) { return { success: false, error: 'FIRECRAWL_API_KEY is not configured; simulated website audits are disabled.', confidence: 0, source: 'Firecrawl not configured', timestamp: new Date() }; }
 
     try {
       const scrapePromise = this.scrapeWebsite(normalizedUrl);
@@ -143,25 +142,20 @@ export class FirecrawlPlugin extends BasePlugin {
   private compileAnalysis(url: string, scrapeData: any, lighthouseData: any): WebsiteAnalysisResult {
     const techStack = this.detectTechStack(scrapeData);
     const hasSSL = url.startsWith('https');
+    const metricsAvailable = ['performance', 'seo', 'accessibility', 'best-practices'].every((key) => typeof lighthouseData?.[key]?.score === 'number');
 
-    const perf = lighthouseData?.performance?.score
-      ? Math.round(lighthouseData.performance.score * 100)
-      : Math.floor(30 + Math.random() * 50);
+    const perf = typeof lighthouseData?.performance?.score === 'number' ? Math.round(lighthouseData.performance.score * 100) : 0;
 
-    const seo = lighthouseData?.seo?.score
-      ? Math.round(lighthouseData.seo.score * 100)
-      : Math.floor(35 + Math.random() * 45);
+    const seo = typeof lighthouseData?.seo?.score === 'number' ? Math.round(lighthouseData.seo.score * 100) : 0;
 
-    const a11y = lighthouseData?.accessibility?.score
-      ? Math.round(lighthouseData.accessibility.score * 100)
-      : Math.floor(40 + Math.random() * 40);
+    const a11y = typeof lighthouseData?.accessibility?.score === 'number' ? Math.round(lighthouseData.accessibility.score * 100) : 0;
 
-    const bp = lighthouseData?.['best-practices']?.score
-      ? Math.round(lighthouseData['best-practices'].score * 100)
-      : Math.floor(45 + Math.random() * 40);
+    const bp = typeof lighthouseData?.['best-practices']?.score === 'number' ? Math.round(lighthouseData['best-practices'].score * 100) : 0;
 
     const issues: string[] = [];
     const opportunities: string[] = [];
+    if (!metricsAvailable) issues.push('PageSpeed metrics unavailable or incomplete; scores are not fully measured.');
+    issues.push('Load time was not measured by this audit and is intentionally left unavailable.');
 
     if (perf < 50) issues.push(`Critical performance bottleneck: PageSpeed score ${perf}/100`);
     if (seo < 50) issues.push('Poor SEO health: Missing structured data, meta tags, or sitemap');
@@ -180,6 +174,7 @@ export class FirecrawlPlugin extends BasePlugin {
     return {
       url,
       exists: !!scrapeData,
+      metricsAvailable,
       statusCode: 200,
       performance: perf,
       seo,
@@ -187,7 +182,7 @@ export class FirecrawlPlugin extends BasePlugin {
       bestPractices: bp,
       mobileScore: Math.round((perf + a11y) / 2),
       hasSSL,
-      loadTimeMs: Math.floor(2000 + (100 - perf) * 40),
+      loadTimeMs: 0,
       techStack,
       cms: techStack.find((t) => ['WordPress', 'Wix', 'Squarespace', 'Shopify'].some((c) => t.includes(c))),
       framework: techStack.find((t) => ['React', 'Next.js', 'Vue', 'Angular', 'Laravel'].some((f) => t.includes(f))),
@@ -223,11 +218,23 @@ export class FirecrawlPlugin extends BasePlugin {
   }
 
   private normalizeUrl(url: string): string {
-    let normalized = url.trim();
-    if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
-      normalized = 'https://' + normalized;
-    }
-    return normalized;
+    const input = url.trim();
+    if (!input || input.length > 2048) throw new Error('A valid website URL under 2048 characters is required');
+    const hasScheme = input.startsWith('http://') || input.startsWith('https://');
+    const parsed = new URL(hasScheme ? input : `https://${input}`);
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error('Only public HTTP(S) website URLs are supported');
+    const host = parsed.hostname.toLowerCase().replace('[', '').replace(']', '');
+    const octets = host.split('.').map((part) => Number(part));
+    const privateIpv4 = octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255) && (
+      octets[0] === 0 || octets[0] === 10 || octets[0] === 127 ||
+      (octets[0] === 169 && octets[1] === 254) ||
+      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+      (octets[0] === 192 && octets[1] === 168)
+    );
+    const blocked = host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
+      host.includes(':') || host === '0.0.0.0' || host === '169.254.169.254' || privateIpv4;
+    if (blocked) throw new Error('Local, private, and link-local destinations are not allowed');
+    return parsed.toString();
   }
 
   private simulateAnalysis(url: string): PluginResult<WebsiteAnalysisResult> {

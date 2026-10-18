@@ -40,9 +40,7 @@ export class GooglePlacesPlugin extends BasePlugin {
   }
 
   async execute(params: PlacesSearchParams): Promise<PluginResult<PlacesSearchResult[]>> {
-    if (!this.apiKey) {
-      return this.simulateResults(params);
-    }
+    if (!this.apiKey) { return { success: false, error: 'GOOGLE_PLACES_API_KEY is not configured; simulated place results are disabled.', confidence: 0, source: 'Google Places not configured', timestamp: new Date() }; }
 
     try {
       const results = await this.nearbySearch(params);
@@ -132,13 +130,7 @@ export class GooglePlacesPlugin extends BasePlugin {
   }
 
   async textSearch(query: string, location?: { lat: number; lng: number }, radius?: number): Promise<PluginResult<PlacesSearchResult[]>> {
-    if (!this.apiKey) {
-      return this.simulateResults({
-        location: location || { lat: 43.6532, lng: -79.3832 },
-        radius: radius || 25,
-        category: query,
-      });
-    }
+    if (!this.apiKey) { return { success: false, error: 'GOOGLE_PLACES_API_KEY is not configured; synthetic place results are disabled.', confidence: 0, source: 'Google Places not configured', timestamp: new Date() }; }
 
     try {
       const url = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
@@ -182,15 +174,7 @@ export class GooglePlacesPlugin extends BasePlugin {
   }
 
   async geocode(address: string): Promise<PluginResult<{ lat: number; lng: number }>> {
-    if (!this.apiKey) {
-      return {
-        success: true,
-        data: { lat: 43.6532, lng: -79.3832 },
-        confidence: 50,
-        source: 'Geocode Fallback',
-        timestamp: new Date(),
-      };
-    }
+    if (!this.apiKey) { return { success: false, error: 'GOOGLE_PLACES_API_KEY is not configured; no default city coordinates will be substituted.', confidence: 0, source: 'Google Geocoding not configured', timestamp: new Date() }; }
 
     try {
       const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');

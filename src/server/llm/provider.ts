@@ -4,6 +4,8 @@
  * The API key is read only on the server. Do not import this module from
  * browser/client code or expose its configuration through a public endpoint.
  */
+import { estimateTokens, recordLLMUsage } from '../services/llm-usage';
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
@@ -147,7 +149,6 @@ export async function createChatCompletion(
   if (!Array.isArray(options.messages) || options.messages.length === 0) {
     throw new LLMGatewayError('At least one chat message is required');
   }
-
   const model = options.model || process.env.LLM_DEFAULT_MODEL || 'auto';
   const body = {
     model,
@@ -155,57 +156,66 @@ export async function createChatCompletion(
     ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
     ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
   };
+  const startedAt = Date.now();
+  const promptText = options.messages.map((message) => message.content || '').join('\n');
+  try {
+    const response = await requestJson<{
+      id?: string;
+      model?: string;
+      choices?: Array<{
+        message?: {
+          content?: string | null;
+          tool_calls?: Array<{ id?: string; type?: string; function?: { name?: string; arguments?: string } }>;
+        };
+        finish_reason?: string | null;
+      }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+    }>('/chat/completions', { method: 'POST', body: JSON.stringify(body) }, options.signal);
 
-  const response = await requestJson<{
-    id?: string;
-    model?: string;
-    choices?: Array<{
-      message?: {
-        content?: string | null;
-        tool_calls?: Array<{
-          id?: string;
-          type?: string;
-          function?: { name?: string; arguments?: string };
-        }>;
-      };
-      finish_reason?: string | null;
-    }>;
-    usage?: {
-      prompt_tokens?: number;
-      completion_tokens?: number;
-      total_tokens?: number;
-    };
-  }>('/chat/completions', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  }, options.signal);
+    const choice = response.choices?.[0];
+    if (!choice?.message) throw new LLMGatewayError('LLM gateway returned no completion choice');
 
-  const choice = response.choices?.[0];
-  if (!choice?.message) {
-    throw new LLMGatewayError('LLM gateway returned no completion choice');
-  }
-
-  return {
-    id: response.id || '',
-    model: response.model || model,
-    content: choice.message.content ?? null,
-    finishReason: choice.finish_reason ?? null,
-    toolCalls: (choice.message.tool_calls || [])
-      .filter((call) => call.type === 'function' && call.function?.name)
-      .map((call) => ({
-        id: call.id || '',
-        type: 'function' as const,
-        function: {
-          name: call.function!.name!,
-          arguments: call.function!.arguments || '{}',
-        },
-      })),
-    ...(response.usage ? {
-      usage: {
+    const result: ChatCompletionResult = {
+      id: response.id || '',
+      model: response.model || model,
+      content: choice.message.content ?? null,
+      finishReason: choice.finish_reason ?? null,
+      toolCalls: (choice.message.tool_calls || [])
+        .filter((call) => call.type === 'function' && call.function?.name)
+        .map((call) => ({
+          id: call.id || '',
+          type: 'function' as const,
+          function: { name: call.function!.name!, arguments: call.function!.arguments || '{}' },
+        })),
+      ...(response.usage ? { usage: {
         promptTokens: response.usage.prompt_tokens,
         completionTokens: response.usage.completion_tokens,
         totalTokens: response.usage.total_tokens,
-      },
-    } : {}),
-  };
+      } } : {}),
+    };
+    const hasProviderUsage = typeof response.usage?.prompt_tokens === 'number' && typeof response.usage?.completion_tokens === 'number';
+    recordLLMUsage({
+      model: result.model,
+      provider: process.env.LLM_PROVIDER || 'openai-compatible',
+      purpose: 'chat-completion',
+      promptTokens: result.usage?.promptTokens ?? estimateTokens(promptText),
+      completionTokens: result.usage?.completionTokens ?? estimateTokens(result.content || ''),
+      tokenCountSource: hasProviderUsage ? 'provider' : 'estimated',
+      latencyMs: Date.now() - startedAt,
+      success: true,
+    });
+    return result;
+  } catch (error) {
+    recordLLMUsage({
+      model,
+      provider: process.env.LLM_PROVIDER || 'openai-compatible',
+      purpose: 'chat-completion',
+      promptTokens: estimateTokens(promptText),
+      completionTokens: 0,
+      tokenCountSource: 'estimated',
+      latencyMs: Date.now() - startedAt,
+      success: false,
+    });
+    throw error;
+  }
 }

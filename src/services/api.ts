@@ -126,6 +126,9 @@ export const api = {
 
   getLead: (id: string) => request<BusinessLead>(`/api/leads/${id}`),
 
+  submitLeadFeedback: (id: string, feedback: { rating: 'correct' | 'incorrect' | 'useful' | 'not-useful'; field?: string; comment?: string }) =>
+    request<{ success: boolean; message: string }>(`/api/leads/${id}/feedback`, { method: 'POST', body: JSON.stringify(feedback) }),
+
   updateLead: (id: string, updates: Partial<BusinessLead>) =>
     request<BusinessLead>(`/api/leads/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
 
