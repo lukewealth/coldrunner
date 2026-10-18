@@ -4,6 +4,8 @@
  * The API key is read only on the server. Do not import this module from
  * browser/client code or expose its configuration through a public endpoint.
  */
+import { estimateTokens, recordLLMUsage } from '../services/llm-usage';
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
