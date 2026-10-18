@@ -149,7 +149,8 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 pb-12">\n      <LLMUsageMonitor />
+    <div className="space-y-8 pb-12">
+      <LLMUsageMonitor />
       <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
