@@ -400,22 +400,11 @@ async function startServer() {
       });
     } catch (err: any) {
       console.error('Agent workflow error:', err);
-      const ai = getAi();
-      if (ai) {
-        try {
-          const fallbackLeads = await generateWithGemini(ai, searchCriteria);
-          localDatabase.saveLeads(ip, fallbackLeads);
-          localDatabase.addSearchHistory(ip, searchCriteria, fallbackLeads.length);
-          res.json({ leads: fallbackLeads, source: 'gemini_fallback' });
-        } catch (geminiErr: any) {
-          res.status(500).json({ error: 'Workflow and Gemini fallback both failed', details: geminiErr.message });
-        }
-      } else {
-        const simulatedLeads = generateSimulatedLeads(searchCriteria);
-        localDatabase.saveLeads(ip, simulatedLeads);
-        localDatabase.addSearchHistory(ip, searchCriteria, simulatedLeads.length);
-        res.json({ leads: simulatedLeads, source: 'simulated_fallback' });
-      }
+      res.status(502).json({
+        error: 'Live search workflow failed; no synthetic leads were returned.',
+        details: err instanceof Error ? err.message : 'Unknown workflow error',
+        source: 'live_search_failed',
+      });
     }
   });
 
