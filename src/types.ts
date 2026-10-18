@@ -1,6 +1,6 @@
 export type LeadGrade = 'HOT' | 'WARM' | 'COLD';
 export type LeadStatus = 'New' | 'Qualified' | 'Contacted' | 'Meeting Set' | 'Converted' | 'Archived';
-export type WebsiteStatus = 'Missing' | 'Outdated' | 'Poor SEO' | 'Slow Speed' | 'Broken SSL' | 'Good';
+export type WebsiteStatus = 'Missing' | 'Pending Audit' | 'Outdated' | 'Poor SEO' | 'Slow Speed' | 'Broken SSL' | 'Good';
 
 export interface WebsiteAudit {
   performance: number;
