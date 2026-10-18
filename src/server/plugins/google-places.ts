@@ -40,9 +40,7 @@ export class GooglePlacesPlugin extends BasePlugin {
   }
 
   async execute(params: PlacesSearchParams): Promise<PluginResult<PlacesSearchResult[]>> {
-    if (!this.apiKey) {
-      return this.simulateResults(params);
-    }
+    if (!this.apiKey) { return { success: false, error: 'GOOGLE_PLACES_API_KEY is not configured; simulated place results are disabled.', confidence: 0, source: 'Google Places not configured', timestamp: new Date() }; }
 
     try {
       const results = await this.nearbySearch(params);
