@@ -64,7 +64,7 @@ export class GooglePlacesAgent implements Agent {
 
   private mapToLead(place: any, criteria: SearchCriteria): BusinessLead {
     const hasWebsite = !!place.website;
-    const websiteStatus = !hasWebsite ? 'Missing' as const : 'Good' as const;
+    const websiteStatus = !hasWebsite ? 'Missing' as const : 'Pending Audit' as const;
     const score = this.calculateInitialScore(place, websiteStatus);
     const grade = score >= 85 ? 'HOT' as const : score >= 60 ? 'WARM' as const : 'COLD' as const;
 
@@ -107,7 +107,7 @@ export class GooglePlacesAgent implements Agent {
       },
       recommendedService: '',
       aiInsights: '',
-      dataConfidence: 85,
+      dataConfidence: 0,
       verificationStatus: 'Pending',
       lastUpdated: new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString().split('T')[0],
@@ -121,16 +121,12 @@ export class GooglePlacesAgent implements Agent {
     if (place.userRatingsTotal >= 150) score += 10;
     if (place.userRatingsTotal >= 50) score += 5;
     if (place.businessStatus === 'OPERATIONAL') score += 5;
-    score += Math.floor(Math.random() * 20);
+    // Deterministic score: only use observed Places fields; no random boost.
     return Math.min(score, 100);
   }
 
-  private estimateRevenue(place: any): string {
-    const reviews = place.userRatingsTotal || 0;
-    if (reviews > 200) return '$1.5M - $3.0M';
-    if (reviews > 100) return '$800k - $1.5M';
-    if (reviews > 50) return '$500k - $800k';
-    if (reviews > 20) return '$250k - $500k';
-    return '$100k - $250k';
+  private estimateRevenue(_place: any): string {
+    // Revenue is not available from Places; do not infer a fake business revenue.
+    return 'Unknown';
   }
 }
