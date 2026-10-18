@@ -2,6 +2,7 @@ import { Agent, AgentContext, AgentResult } from './types';
 import { pluginRegistry } from '../plugins';
 import { HunterPlugin, ApolloPlugin } from '../plugins/contact-discovery';
 import { SocialAnalyzerPlugin } from '../plugins/social-analyzer';
+import { assessLeadDataQuality, normalizeDomain, validateEmail, validatePhone } from '../services/data-quality';
 
 export class ContactDiscoveryAgent implements Agent {
   type = 'contact-discovery' as const;
@@ -25,7 +26,7 @@ export class ContactDiscoveryAgent implements Agent {
       await Promise.all(
         batch.map(async (lead) => {
           try {
-            const domain = lead.website ? lead.website.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace('www.', '') : '';
+            const domain = lead.website ? normalizeDomain(lead.website) : '';, '').replace(/\/.*$/, '').replace('www.', '') : '';
 
             const hunterPromise = domain && hunter
               ? hunter.execute({ domain, companyName: lead.name })
@@ -54,7 +55,7 @@ export class ContactDiscoveryAgent implements Agent {
               const businessEmail = emails.find((e) => e.type === 'business') || emails[0];
               const ownerEmail = emails.find((e) => e.type === 'owner');
 
-              lead.email = businessEmail?.address || `${lead.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@${domain}`;
+              if (businessEmail?.address && validateEmail(businessEmail.address).status === 'plausible') lead.email = businessEmail.address;
 
               if (ownerEmail) {
                 lead.ownerName = hunterResult.data.ownerName;
@@ -72,9 +73,7 @@ export class ContactDiscoveryAgent implements Agent {
             }
 
             if (apolloResult?.success && apolloResult.data) {
-              if (!lead.email && apolloResult.data.emails.length > 0) {
-                lead.email = apolloResult.data.emails[0].address;
-              }
+              if (!lead.email && apolloResult.data.emails.length > 0) { const candidate = apolloResult.data.emails.find((e) => validateEmail(e.address).status === 'plausible'); if (candidate) lead.email = candidate.address; }
               if (!lead.ownerName && apolloResult.data.ownerName) {
                 lead.ownerName = apolloResult.data.ownerName;
               }
@@ -111,8 +110,9 @@ export class ContactDiscoveryAgent implements Agent {
               }
             }
 
-            lead.verificationStatus = 'Enriched';
-            lead.dataConfidence = Math.min(98, lead.dataConfidence + 5);
+            lead.dataQuality = assessLeadDataQuality({ email: lead.email, phone: lead.phone, website: lead.website, address: lead.address, socials: lead.socials });
+            lead.dataConfidence = lead.dataQuality.score;
+            lead.verificationStatus = lead.dataQuality.score >= 75 ? 'Verified' : 'Enriched';
             processed++;
           } catch (err: any) {
             onLog({ agent: this.name, level: 'warning', message: `Contact discovery partial for ${lead.name}: ${err.message}` });
