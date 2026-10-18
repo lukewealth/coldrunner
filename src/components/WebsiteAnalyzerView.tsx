@@ -108,15 +108,15 @@ export const WebsiteAnalyzerView: React.FC = () => {
             <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 text-center space-y-1">
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Performance</span>
               <div className={`text-3xl font-black ${auditResult.performance < 50 ? 'text-red-600' : 'text-emerald-600'}`}>
-                {auditResult.performance}/100
+                {auditResult.metricsAvailable ? `${auditResult.performance}/100` : 'Not measured'}
               </div>
-              <p className="text-[11px] text-slate-500">{(auditResult.loadTimeMs / 1000).toFixed(1)}s load time</p>
+              <p className="text-[11px] text-slate-500">{auditResult.loadTimeMs > 0 ? `${(auditResult.loadTimeMs / 1000).toFixed(1)}s load time` : 'Load time not measured'}</p>
             </div>
 
             <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 text-center space-y-1">
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">SEO Score</span>
               <div className="text-3xl font-black text-amber-600">
-                {auditResult.seo}/100
+                {auditResult.metricsAvailable ? `${auditResult.seo}/100` : 'Not measured'}
               </div>
               <p className="text-[11px] text-slate-500">Local Search Health</p>
             </div>
@@ -124,7 +124,7 @@ export const WebsiteAnalyzerView: React.FC = () => {
             <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 text-center space-y-1">
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Accessibility</span>
               <div className="text-3xl font-black text-blue-600">
-                {auditResult.accessibility}/100
+                {auditResult.metricsAvailable ? `${auditResult.accessibility}/100` : 'Not measured'}
               </div>
               <p className="text-[11px] text-slate-500">Mobile Friendly</p>
             </div>
