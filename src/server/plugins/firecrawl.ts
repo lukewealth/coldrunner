@@ -142,6 +142,7 @@ export class FirecrawlPlugin extends BasePlugin {
   private compileAnalysis(url: string, scrapeData: any, lighthouseData: any): WebsiteAnalysisResult {
     const techStack = this.detectTechStack(scrapeData);
     const hasSSL = url.startsWith('https');
+    const metricsAvailable = ['performance', 'seo', 'accessibility', 'best-practices'].every((key) => typeof lighthouseData?.[key]?.score === 'number');
 
     const perf = typeof lighthouseData?.performance?.score === 'number' ? Math.round(lighthouseData.performance.score * 100) : 0;
 
@@ -153,7 +154,7 @@ export class FirecrawlPlugin extends BasePlugin {
 
     const issues: string[] = [];
     const opportunities: string[] = [];
-    if (!lighthouseData) issues.push('PageSpeed metrics unavailable; performance, SEO, accessibility, and best-practice scores are not measured.');
+    if (!metricsAvailable) issues.push('PageSpeed metrics unavailable or incomplete; scores are not fully measured.');
     issues.push('Load time was not measured by this audit and is intentionally left unavailable.');
 
     if (perf < 50) issues.push(`Critical performance bottleneck: PageSpeed score ${perf}/100`);
@@ -173,7 +174,7 @@ export class FirecrawlPlugin extends BasePlugin {
     return {
       url,
       exists: !!scrapeData,
-      metricsAvailable: !!lighthouseData,
+      metricsAvailable,
       statusCode: 200,
       performance: perf,
       seo,
@@ -217,11 +218,14 @@ export class FirecrawlPlugin extends BasePlugin {
   }
 
   private normalizeUrl(url: string): string {
-    let normalized = url.trim();
-    if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
-      normalized = 'https://' + normalized;
-    }
-    return normalized;
+    const input = url.trim();
+    if (!input || input.length > 2048) throw new Error('A valid website URL under 2048 characters is required');
+    const parsed = new URL(/^https?:\\/\\//i.test(input) ? input : `https://${input}`);
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error('Only public HTTP(S) website URLs are supported');
+    const host = parsed.hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
+    const blocked = host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host === '::1' || host === '0.0.0.0' || host === '169.254.169.254' || /^127\\./.test(host) || /^10\\./.test(host) || /^192\\.168\\./.test(host) || /^172\\.(1[6-9]|2[0-9]|3[01])\\./.test(host) || /^169\\.254\\./.test(host) || /^fc[0-9a-f]{2}:/i.test(host) || /^fe80:/i.test(host);
+    if (blocked) throw new Error('Local, private, and link-local destinations are not allowed');
+    return parsed.toString();
   }
 
   private simulateAnalysis(url: string): PluginResult<WebsiteAnalysisResult> {
