@@ -99,3 +99,25 @@ Use read-only access by default. Require explicit approval for external messages
 - MCP connectors can be inspected, permissioned, health-checked, and disabled.
 - Existing startup no longer fetches and evaluates remote JavaScript.
 - CI tests pass and no unverified claim of production readiness is made.
+
+
+## Implemented on `feat/freellmapi-agentic-upgrade`
+
+- Added deterministic field validation for email syntax, phone plausibility, website URL shape, address presence, and social-platform hosts.
+- Added a weighted data-quality score and field-level source labels. The score is completeness/format quality, **not** a calibrated probability of correctness.
+- Replaced synthetic social profile generation with SearXNG search results, platform-host validation, evidence snippets, and explicit unavailable states.
+- Disabled fake Hunter/Apollo contacts and fake Google Places/geocoding results when their API keys are missing.
+- Removed synthetic website-analysis fallback responses and random PageSpeed/load-time metrics. Unavailable measurements are labeled as not measured.
+- Added persistent, per-workspace lead feedback in SQLite, with validated feedback ratings and a summary endpoint.
+- Added an LLM monitor in Settings, model discovery endpoint, token/latency usage telemetry, and optional model-specific cost estimates configured by `LLM_PRICING_JSON`.
+- Removed the remote fetch + `eval` bootstrap from `server.ts` and stopped package scripts from invoking the obfuscated `api.js` entry point.
+- Added focused tests for validation and quality scoring.
+
+## Important limitations
+
+- Build and tests have **not** been executed in this environment. Run `npm run lint`, `npm test`, and `npm run build` in a trusted environment before merging.
+- LLM usage telemetry is currently in-memory and resets on server restart; move it to a persistent database for production.
+- Cost estimates are only available when authoritative per-model rates are configured. If provider usage is absent, token counts use a rough character-based estimate.
+- SearXNG results are candidates, not proof of account ownership. Email syntax checks do not verify mailbox existence, and plausible phone numbers are not confirmed reachable.
+- Public-host URL checks block common local/private IP literals, but DNS resolution/rebinding controls and strict outbound egress policy are still required for production SSRF protection.
+- API authentication, rate limiting, comprehensive source citations in every export, and a full connector permissions UI remain follow-up work.
