@@ -154,6 +154,7 @@ export class FirecrawlPlugin extends BasePlugin {
     const issues: string[] = [];
     const opportunities: string[] = [];
     if (!lighthouseData) issues.push('PageSpeed metrics unavailable; performance, SEO, accessibility, and best-practice scores are not measured.');
+    issues.push('Load time was not measured by this audit and is intentionally left unavailable.');
 
     if (perf < 50) issues.push(`Critical performance bottleneck: PageSpeed score ${perf}/100`);
     if (seo < 50) issues.push('Poor SEO health: Missing structured data, meta tags, or sitemap');
@@ -180,7 +181,7 @@ export class FirecrawlPlugin extends BasePlugin {
       bestPractices: bp,
       mobileScore: Math.round((perf + a11y) / 2),
       hasSSL,
-      loadTimeMs: Math.floor(2000 + (100 - perf) * 40),
+      loadTimeMs: 0,
       techStack,
       cms: techStack.find((t) => ['WordPress', 'Wix', 'Squarespace', 'Shopify'].some((c) => t.includes(c))),
       framework: techStack.find((t) => ['React', 'Next.js', 'Vue', 'Angular', 'Laravel'].some((f) => t.includes(f))),
