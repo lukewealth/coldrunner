@@ -78,7 +78,6 @@ export class ContactDiscoveryAgent implements Agent {
         } catch (error) {
           onLog({ agent: this.name, level: 'warning', message: `Contact discovery partial for ${lead.name}: ${error instanceof Error ? error.message : 'unknown error'}` });
           lead.dataQuality = assessLeadDataQuality({ email: lead.email, phone: lead.phone, website: lead.website, address: lead.address, socials: lead.socials });
-          lead.dataConfidence = lead.dataQuality.score;
           processed++;
         }
       }));
