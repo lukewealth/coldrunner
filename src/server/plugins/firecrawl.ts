@@ -220,10 +220,20 @@ export class FirecrawlPlugin extends BasePlugin {
   private normalizeUrl(url: string): string {
     const input = url.trim();
     if (!input || input.length > 2048) throw new Error('A valid website URL under 2048 characters is required');
-    const parsed = new URL(/^https?:\\/\\//i.test(input) ? input : `https://${input}`);
+    const hasScheme = input.startsWith('http://') || input.startsWith('https://');
+    const parsed = new URL(hasScheme ? input : `https://${input}`);
     if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error('Only public HTTP(S) website URLs are supported');
-    const host = parsed.hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
-    const blocked = host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host === '::1' || host === '0.0.0.0' || host === '169.254.169.254' || /^127\\./.test(host) || /^10\\./.test(host) || /^192\\.168\\./.test(host) || /^172\\.(1[6-9]|2[0-9]|3[01])\\./.test(host) || /^169\\.254\\./.test(host) || /^fc[0-9a-f]{2}:/i.test(host) || /^fe80:/i.test(host);
+    const host = parsed.hostname.toLowerCase().replace('[', '').replace(']', '');
+    const octets = host.split('.').map((part) => Number(part));
+    const privateIpv4 = octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255) && (
+      octets[0] === 0 || octets[0] === 10 || octets[0] === 127 ||
+      (octets[0] === 169 && octets[1] === 254) ||
+      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+      (octets[0] === 192 && octets[1] === 168)
+    );
+    const blocked = host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
+      host === '::1' || host === '0.0.0.0' || host === '169.254.169.254' ||
+      privateIpv4 || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:');
     if (blocked) throw new Error('Local, private, and link-local destinations are not allowed');
     return parsed.toString();
   }
