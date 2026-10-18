@@ -73,7 +73,6 @@ export class ContactDiscoveryAgent implements Agent {
           }
 
           lead.dataQuality = assessLeadDataQuality({ email: lead.email, phone: lead.phone, website: lead.website, address: lead.address, socials: lead.socials });
-          lead.dataConfidence = lead.dataQuality.score;
           lead.verificationStatus = lead.dataQuality.score >= 75 ? 'Verified' : 'Enriched';
           processed++;
         } catch (error) {
