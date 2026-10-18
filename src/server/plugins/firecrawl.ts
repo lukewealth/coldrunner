@@ -232,8 +232,7 @@ export class FirecrawlPlugin extends BasePlugin {
       (octets[0] === 192 && octets[1] === 168)
     );
     const blocked = host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
-      host === '::1' || host === '0.0.0.0' || host === '169.254.169.254' ||
-      privateIpv4 || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:');
+      host.includes(':') || host === '0.0.0.0' || host === '169.254.169.254' || privateIpv4;
     if (blocked) throw new Error('Local, private, and link-local destinations are not allowed');
     return parsed.toString();
   }
