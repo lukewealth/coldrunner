@@ -496,20 +496,20 @@ async function startServer() {
             if (firecrawlResult.success && firecrawlResult.data) {
               const fc = firecrawlResult.data;
               lead.audit = {
-                performance: fc.performance || lead.audit?.performance || 50,
-                seo: fc.seo || lead.audit?.seo || 50,
-                accessibility: fc.accessibility || lead.audit?.accessibility || 60,
-                bestPractices: fc.bestPractices || lead.audit?.bestPractices || 60,
-                mobileScore: fc.mobileScore || lead.audit?.mobileScore || 50,
+                performance: fc.performance ?? lead.audit?.performance ?? 0,
+                seo: fc.seo ?? lead.audit?.seo ?? 0,
+                accessibility: fc.accessibility ?? lead.audit?.accessibility ?? 0,
+                bestPractices: fc.bestPractices ?? lead.audit?.bestPractices ?? 0,
+                mobileScore: fc.mobileScore ?? lead.audit?.mobileScore ?? 0,
                 hasSSL: fc.hasSSL ?? lead.audit?.hasSSL ?? true,
-                loadTimeMs: fc.loadTimeMs || lead.audit?.loadTimeMs || 3000,
+                loadTimeMs: fc.loadTimeMs ?? lead.audit?.loadTimeMs ?? 0,
                 techStack: fc.techStack || lead.audit?.techStack || [],
                 issues: fc.issues || lead.audit?.issues || [],
                 opportunities: fc.opportunities || lead.audit?.opportunities || [],
               };
-              sendLog('Firecrawl Agent', 'success', `${lead.website}: Perf ${fc.performance}/100, SEO ${fc.seo}/100, Load ${(fc.loadTimeMs / 1000).toFixed(1)}s`);
+              sendLog('Firecrawl Agent', fc.metricsAvailable ? 'success' : 'warning', fc.metricsAvailable ? `${lead.website}: measured PageSpeed metrics received` : `${lead.website}: content analyzed; PageSpeed scores/load time not measured`);
             } else {
-              sendLog('Firecrawl Agent', 'warning', `${lead.website}: Scrape returned no data, using cached audit`);
+              sendLog('Firecrawl Agent', 'warning', `${lead.website}: no verified audit data returned; existing scores were not replaced`);
             }
           } catch (fcErr: any) {
             sendLog('Firecrawl Agent', 'warning', `${lead.website}: ${fcErr.message}`);
