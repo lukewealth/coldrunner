@@ -58,6 +58,7 @@ export interface BusinessLead {
   recommendedService: string;
   aiInsights: string;
   dataConfidence: number;
+  dataQuality?: import('./services/data-quality').LeadDataQuality;
   verificationStatus: VerificationStatus;
   lastUpdated: string;
   createdAt: string;
