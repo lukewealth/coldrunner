@@ -5,6 +5,7 @@ import { config } from '../config';
 interface WebsiteAnalysisResult {
   url: string;
   exists: boolean;
+  metricsAvailable?: boolean;
   statusCode?: number;
   performance: number;
   seo: number;
@@ -45,9 +46,7 @@ export class FirecrawlPlugin extends BasePlugin {
     const { url } = params;
     const normalizedUrl = this.normalizeUrl(url);
 
-    if (!this.apiKey) {
-      return this.simulateAnalysis(normalizedUrl);
-    }
+    if (!this.apiKey) { return { success: false, error: 'FIRECRAWL_API_KEY is not configured; simulated website audits are disabled.', confidence: 0, source: 'Firecrawl not configured', timestamp: new Date() }; }
 
     try {
       const scrapePromise = this.scrapeWebsite(normalizedUrl);
@@ -144,24 +143,17 @@ export class FirecrawlPlugin extends BasePlugin {
     const techStack = this.detectTechStack(scrapeData);
     const hasSSL = url.startsWith('https');
 
-    const perf = lighthouseData?.performance?.score
-      ? Math.round(lighthouseData.performance.score * 100)
-      : Math.floor(30 + Math.random() * 50);
+    const perf = typeof lighthouseData?.performance?.score === 'number' ? Math.round(lighthouseData.performance.score * 100) : 0;
 
-    const seo = lighthouseData?.seo?.score
-      ? Math.round(lighthouseData.seo.score * 100)
-      : Math.floor(35 + Math.random() * 45);
+    const seo = typeof lighthouseData?.seo?.score === 'number' ? Math.round(lighthouseData.seo.score * 100) : 0;
 
-    const a11y = lighthouseData?.accessibility?.score
-      ? Math.round(lighthouseData.accessibility.score * 100)
-      : Math.floor(40 + Math.random() * 40);
+    const a11y = typeof lighthouseData?.accessibility?.score === 'number' ? Math.round(lighthouseData.accessibility.score * 100) : 0;
 
-    const bp = lighthouseData?.['best-practices']?.score
-      ? Math.round(lighthouseData['best-practices'].score * 100)
-      : Math.floor(45 + Math.random() * 40);
+    const bp = typeof lighthouseData?.['best-practices']?.score === 'number' ? Math.round(lighthouseData['best-practices'].score * 100) : 0;
 
     const issues: string[] = [];
     const opportunities: string[] = [];
+    if (!lighthouseData) issues.push('PageSpeed metrics unavailable; performance, SEO, accessibility, and best-practice scores are not measured.');
 
     if (perf < 50) issues.push(`Critical performance bottleneck: PageSpeed score ${perf}/100`);
     if (seo < 50) issues.push('Poor SEO health: Missing structured data, meta tags, or sitemap');
@@ -180,6 +172,7 @@ export class FirecrawlPlugin extends BasePlugin {
     return {
       url,
       exists: !!scrapeData,
+      metricsAvailable: !!lighthouseData,
       statusCode: 200,
       performance: perf,
       seo,
