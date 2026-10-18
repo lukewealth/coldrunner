@@ -5,6 +5,7 @@ export type VerificationStatus = 'Verified' | 'Pending' | 'Enriched';
 
 export interface WebsiteAudit {
   performance: number;
+  metricsAvailable?: boolean;
   seo: number;
   accessibility: number;
   bestPractices: number;
