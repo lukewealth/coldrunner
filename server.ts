@@ -745,6 +745,24 @@ Return JSON: { "leadId": "...", "businessName": "...", "emailSubject": "...", "e
     res.json({ leads: leads.slice(0, parseInt((limit as string) || '100', 10)), total: leads.length });
   });
 
+  app.post('/api/leads/:id/feedback', (req, res) => {
+    const ip = getClientIp(req);
+    const leadId = req.params.id;
+    const { rating, field, comment } = req.body || {};
+    const allowedRatings = ['correct', 'incorrect', 'useful', 'not-useful'];
+    const allowedFields = ['email', 'phone', 'website', 'address', 'socials', 'business-name', 'other'];
+    if (!allowedRatings.includes(rating)) return res.status(400).json({ error: 'rating must be correct, incorrect, useful, or not-useful' });
+    if (field !== undefined && !allowedFields.includes(field)) return res.status(400).json({ error: 'Unsupported feedback field' });
+    if (comment !== undefined && (typeof comment !== 'string' || comment.length > 1000)) return res.status(400).json({ error: 'comment must be a string up to 1000 characters' });
+    if (!localDatabase.getLead(ip, leadId)) return res.status(404).json({ error: 'Lead not found for this workspace' });
+    localDatabase.saveLeadFeedback(ip, { leadId, rating, field, comment: typeof comment === 'string' ? comment.trim() : undefined });
+    return res.status(201).json({ success: true, message: 'Feedback recorded' });
+  });
+
+  app.get('/api/feedback/summary', (req, res) => {
+    res.json(localDatabase.getLeadFeedbackSummary(getClientIp(req)));
+  });
+
   app.get('/api/leads/:id', (req, res) => {
     const ip = getClientIp(req);
     const lead = localDatabase.getLead(ip, req.params.id);
