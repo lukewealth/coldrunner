@@ -279,21 +279,21 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Performance</span>
                   <div className={`text-2xl font-black ${lead.audit.performance < 50 ? 'text-red-600' : 'text-emerald-600'}`}>
-                    {lead.audit.performance}/100
+                    {lead.audit.metricsAvailable ? `${lead.audit.performance}/100` : 'Not measured'}
                   </div>
                   <span className="text-[10px] text-slate-500">Load: {(lead.audit.loadTimeMs / 1000).toFixed(1)}s</span>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">SEO Health</span>
                   <div className={`text-2xl font-black ${lead.audit.seo < 60 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    {lead.audit.seo}/100
+                    {lead.audit.metricsAvailable ? `${lead.audit.seo}/100` : 'Not measured'}
                   </div>
                   <span className="text-[10px] text-slate-500">Local Maps Rank</span>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center space-y-1">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Accessibility</span>
                   <div className="text-2xl font-black text-blue-600">
-                    {lead.audit.accessibility}/100
+                    {lead.audit.metricsAvailable ? `${lead.audit.accessibility}/100` : 'Not measured'}
                   </div>
                   <span className="text-[10px] text-slate-500">Mobile Friendly</span>
                 </div>
@@ -302,7 +302,7 @@ export const BusinessDetailModal: React.FC<BusinessDetailModalProps> = ({
                   <div className="text-2xl font-black text-emerald-600 flex items-center justify-center">
                     {lead.audit.hasSSL ? <ShieldCheck className="w-6 h-6 text-emerald-600" /> : <AlertTriangle className="w-6 h-6 text-red-600" />}
                   </div>
-                  <span className="text-[10px] text-slate-500">{lead.audit.hasSSL ? 'HTTPS Active' : 'No SSL Warning'}</span>
+                  <span className="text-[10px] text-slate-500">{lead.audit.hasSSL ? 'HTTPS URL (certificate not independently checked)' : 'HTTP URL'}</span>
                 </div>
               </div>
 
