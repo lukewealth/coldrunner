@@ -60,7 +60,7 @@ class LocalDatabaseService {
         created_at TEXT DEFAULT (datetime('now'))
       );
 
-      CREATE TABLE IF NOT EXISTS search_history (
+      CREATE TABLE IF NOT EXISTS lead_feedback (\n        id TEXT PRIMARY KEY,\n        lead_id TEXT NOT NULL,\n        rating TEXT NOT NULL,\n        field_name TEXT,\n        comment TEXT,\n        created_at TEXT DEFAULT (datetime('now'))\n      );\n\n      CREATE TABLE IF NOT EXISTS search_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         criteria TEXT,
         result_count INTEGER,
@@ -345,10 +345,26 @@ class LocalDatabaseService {
     return lead;
   }
 
+
+  saveLeadFeedback(ip: string, input: { leadId: string; rating: 'correct' | 'incorrect' | 'useful' | 'not-useful'; field?: string; comment?: string }): void {
+    const db = this.getDb(ip);
+    db.prepare('INSERT INTO lead_feedback (id, lead_id, rating, field_name, comment) VALUES (?, ?, ?, ?, ?)')
+      .run(crypto.randomUUID(), input.leadId, input.rating, input.field || null, input.comment || null);
+  }
+
+  getLeadFeedbackSummary(ip: string): { total: number; byRating: Record<string, number>; recent: Array<{ leadId: string; rating: string; field?: string; comment?: string; createdAt: string }> } {
+    const db = this.getDb(ip);
+    const rows = db.prepare('SELECT rating, COUNT(*) as count FROM lead_feedback GROUP BY rating').all() as Array<{ rating: string; count: number }>;
+    const byRating: Record<string, number> = {};
+    for (const row of rows) byRating[row.rating] = row.count;
+    const recent = db.prepare('SELECT lead_id as leadId, rating, field_name as field, comment, created_at as createdAt FROM lead_feedback ORDER BY created_at DESC LIMIT 50').all() as Array<{ leadId: string; rating: string; field?: string; comment?: string; createdAt: string }>;
+    return { total: recent.length, byRating, recent };
+  }
+
   // Clear all data for an IP
   clearAll(ip: string): void {
     const db = this.getDb(ip);
-    db.exec('DELETE FROM leads; DELETE FROM exported_leads; DELETE FROM workflows; DELETE FROM search_history;');
+    db.exec('DELETE FROM leads; DELETE FROM exported_leads; DELETE FROM workflows; DELETE FROM search_history; DELETE FROM lead_feedback;');
   }
 
   // Get database file size for diagnostics
