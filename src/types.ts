@@ -3,7 +3,8 @@ export type LeadStatus = 'New' | 'Qualified' | 'Contacted' | 'Meeting Set' | 'Co
 export type WebsiteStatus = 'Missing' | 'Outdated' | 'Poor SEO' | 'Slow Speed' | 'Broken SSL' | 'Good';
 
 export interface WebsiteAudit {
-  performance: number; // 0 - 100
+  performance: number;
+  metricsAvailable?: boolean; // 0 - 100
   seo: number; // 0 - 100
   accessibility: number; // 0 - 100
   bestPractices: number; // 0 - 100
